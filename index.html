@@ -3,131 +3,119 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3eee2" />
   <title>煦煦休息時間</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="ink.css" />
 </head>
 <body>
-  <div class="bg-decor" aria-hidden="true"></div>
+  <div class="landscape" aria-hidden="true">
+    <span class="far-mountain"></span>
+    <span class="near-mountain"></span>
+    <span class="mist mist-one"></span>
+    <span class="mist mist-two"></span>
+  </div>
+
   <div class="app" id="app">
     <header class="top">
       <div class="brand-block">
         <p class="brand">煦煦休息時間</p>
-        <p class="sub" id="todayLabel">今天 · 國文 → 數學 → 英文</p>
+        <p class="sub" id="todayLabel">讀書有成 · 休息有度</p>
       </div>
       <div class="balance-chip" title="剩餘可休息">
-        <span class="chip-fox" aria-hidden="true">
-          <svg viewBox="0 0 40 40" width="22" height="22">
-            <path d="M11 17l-7-11 12 6z" fill="#eef4fb"/>
-            <path d="M29 17l7-11-12 6z" fill="#eef4fb"/>
-            <path d="M12.5 16l-3.5-5.5 6 3.5z" fill="#9eb6d4"/>
-            <path d="M27.5 16l3.5-5.5-6 3.5z" fill="#9eb6d4"/>
-            <circle cx="20" cy="22" r="9" fill="#f5f8fc"/>
-            <ellipse cx="20" cy="25.5" rx="4.5" ry="3" fill="#d7e3f2"/>
-            <ellipse cx="16.4" cy="21.2" rx="1.6" ry="1.9" fill="#1a2740"/>
-            <ellipse cx="23.6" cy="21.2" rx="1.6" ry="1.9" fill="#1a2740"/>
-            <circle cx="16.8" cy="20.7" r="0.55" fill="#f0b429"/>
-            <circle cx="24" cy="20.7" r="0.55" fill="#f0b429"/>
-            <ellipse cx="20" cy="24.4" rx="1.5" ry="1" fill="#7a8eaa"/>
-          </svg>
-        </span>
+        <span class="seal-mark" aria-hidden="true">休</span>
         <span class="balance-num" id="balanceMinutes">0</span>
         <span class="balance-unit">分</span>
       </div>
     </header>
 
     <main class="screens">
-      <!-- 首頁 -->
       <section class="screen active" data-screen="home">
         <div class="hero-panel">
-          <div class="hero-sky" aria-hidden="true">
-            <span class="moon"></span>
-            <span class="foxfire f1"></span>
-            <span class="foxfire f2"></span>
-            <span class="foxfire f3"></span>
-            <span class="lantern-glow"></span>
-          </div>
-          <div class="fox-mascot" aria-hidden="true">
-            <svg class="fox-svg" viewBox="0 0 260 210" width="188" height="152">
+          <div class="hero-moon" aria-hidden="true"></div>
+          <div class="hero-mountains" aria-hidden="true"></div>
+          <div class="fox-mascot" aria-label="平靜可愛的水墨九尾狐" role="img">
+            <svg class="fox-svg" viewBox="0 0 360 310" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <linearGradient id="furSilver" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#ffffff"/>
-                  <stop offset="55%" stop-color="#eef4fb"/>
-                  <stop offset="100%" stop-color="#c9d8ea"/>
-                </linearGradient>
-                <linearGradient id="tailFan" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#ffffff"/>
-                  <stop offset="70%" stop-color="#e8f0fa"/>
-                  <stop offset="100%" stop-color="#a9c0da"/>
-                </linearGradient>
+                <filter id="ink-edge" x="-15%" y="-15%" width="130%" height="130%">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="8" result="noise" />
+                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="B" />
+                </filter>
               </defs>
-              <!-- nine fanned fluffy tails -->
-              <g class="tails">
-                <ellipse cx="78" cy="168" rx="18" ry="48" transform="rotate(-52 78 168)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="92" cy="174" rx="17" ry="50" transform="rotate(-36 92 174)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="108" cy="178" rx="16" ry="52" transform="rotate(-18 108 178)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="124" cy="180" rx="16" ry="54" transform="rotate(-4 124 180)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="140" cy="180" rx="16" ry="54" transform="rotate(10 140 180)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="156" cy="176" rx="16" ry="52" transform="rotate(24 156 176)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="170" cy="170" rx="17" ry="50" transform="rotate(38 170 170)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="182" cy="162" rx="17" ry="48" transform="rotate(50 182 162)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="192" cy="152" rx="16" ry="44" transform="rotate(62 192 152)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
+              <g class="tail-fan" filter="url(#ink-edge)">
+                <path d="M166 260C112 278 49 266 25 225C3 187 21 146 72 113C48 151 51 190 84 211C109 227 139 237 166 260Z" />
+                <path d="M169 258C118 260 71 231 60 188C50 147 72 107 116 78C93 118 100 159 128 187C145 204 159 229 169 258Z" />
+                <path d="M172 257C133 239 103 201 108 157C113 113 138 76 174 49C153 93 151 133 167 174C175 196 175 229 172 257Z" />
+                <path d="M176 256C148 225 137 187 148 144C159 101 176 67 199 35C194 81 200 120 196 163C193 195 184 228 176 256Z" />
+                <path d="M181 255C166 214 170 169 183 126C194 91 209 62 218 29C228 76 223 118 213 159C205 194 191 228 181 255Z" />
+                <path d="M186 256C185 215 202 176 226 143C251 108 276 86 300 64C282 108 275 147 256 181C239 211 208 239 186 256Z" />
+                <path d="M190 258C205 220 235 189 271 169C307 149 331 151 346 158C312 176 294 207 268 228C246 246 216 254 190 258Z" />
+                <path d="M192 262C222 232 261 219 300 226C330 232 347 252 352 274C321 254 290 259 260 271C237 280 211 273 192 262Z" />
+                <path d="M187 265C229 260 270 274 293 306H218C210 288 199 274 187 265Z" />
               </g>
-              <!-- body -->
-              <ellipse cx="126" cy="138" rx="36" ry="28" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.3"/>
-              <ellipse cx="126" cy="146" rx="20" ry="14" fill="#dce7f4"/>
-              <!-- neck ruff -->
-              <ellipse cx="126" cy="112" rx="28" ry="16" fill="#f7fbff"/>
-              <!-- head -->
-              <path d="M98 72l-16-28 30 14z" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.2"/>
-              <path d="M154 72l16-28-30 14z" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.2"/>
-              <path d="M100 68l-8-14 16 9z" fill="#9eb6d4"/>
-              <path d="M152 68l8-14-16 9z" fill="#9eb6d4"/>
-              <ellipse cx="126" cy="86" rx="34" ry="30" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.3"/>
-              <ellipse cx="126" cy="98" rx="16" ry="11" fill="#dce7f4"/>
-              <!-- amber eyes -->
-              <ellipse cx="112" cy="84" rx="5.4" ry="6" fill="#1a2740"/>
-              <ellipse cx="140" cy="84" rx="5.4" ry="6" fill="#1a2740"/>
-              <ellipse cx="112" cy="84.5" rx="3.2" ry="3.6" fill="#f0b429"/>
-              <ellipse cx="140" cy="84.5" rx="3.2" ry="3.6" fill="#f0b429"/>
-              <circle cx="113.2" cy="83" r="1.2" fill="#fff6c8"/>
-              <circle cx="141.2" cy="83" r="1.2" fill="#fff6c8"/>
-              <ellipse cx="126" cy="96" rx="4.2" ry="2.6" fill="#7a8eaa"/>
-              <path d="M126 98.5v6" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M126 104.5c-7 4-14 4-19 1.5" fill="none" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M126 104.5c7 4 14 4 19 1.5" fill="none" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <!-- front paws suggestion -->
-              <ellipse cx="112" cy="160" rx="9" ry="6" fill="#eef4fb" stroke="#8ea6c2" stroke-width="1"/>
-              <ellipse cx="140" cy="160" rx="9" ry="6" fill="#eef4fb" stroke="#8ea6c2" stroke-width="1"/>
+              <g class="fox-body" filter="url(#ink-edge)">
+                <path class="body-wash" d="M133 170C116 195 116 243 135 275C150 299 208 302 226 272C244 240 238 196 218 169C196 140 155 140 133 170Z" />
+                <path class="chest" d="M145 166L160 188L172 178L181 194L193 177L211 185L217 160C201 149 158 147 145 166Z" />
+                <path class="ear" d="M139 112L123 52C149 64 164 80 173 100Z" />
+                <path class="ear" d="M205 103L232 48C244 78 239 101 225 120Z" />
+                <path class="ear-inner" d="M140 93L133 66L158 94Z" />
+                <path class="ear-inner" d="M215 96L230 63L226 99Z" />
+                <path class="head-wash" d="M139 93C155 73 205 75 224 101C243 128 224 166 184 174C145 169 120 139 139 93Z" />
+                <path class="cheek" d="M140 128L125 143L148 145L139 158L166 158" />
+                <path class="cheek" d="M226 126L241 142L218 145L228 158L201 158" />
+                <path class="muzzle" d="M163 129C172 120 197 119 205 129L214 143C205 158 194 166 184 167C173 165 162 157 154 143Z" />
+                <path class="eye" d="M150 115C159 108 170 109 177 116C167 119 158 119 150 115Z" />
+                <path class="eye" d="M194 116C203 108 215 108 223 114C213 119 203 120 194 116Z" />
+                <path class="brow" d="M149 108C159 102 169 103 176 107" />
+                <path class="brow" d="M195 107C204 102 214 102 222 107" />
+                <path class="nose" d="M179 143C182 140 188 140 191 143C189 149 182 149 179 143Z" />
+                <path class="smile" d="M185 148C183 153 178 155 173 153M185 148C188 153 193 155 198 152" />
+                <path class="leg" d="M155 211C151 241 151 270 157 285" />
+                <path class="leg" d="M209 211C213 241 213 270 207 285" />
+                <path class="paw" d="M146 285C157 281 168 282 175 287" />
+                <path class="paw" d="M199 287C208 281 219 282 226 286" />
+              </g>
             </svg>
           </div>
           <div class="hero-copy">
-            <p class="eyebrow">銀白九尾 · 守護你的休息時間</p>
+            <p class="eyebrow"><span>九尾守時</span></p>
             <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘</small></p>
-            <p class="hint" id="homeHint">康軒成績好，狐火就更亮</p>
+            <p class="hint" id="homeHint">記下成績，慢慢攢一段好時光</p>
           </div>
         </div>
+
         <div class="action-row">
-          <button type="button" class="btn primary" data-go="log">記成績</button>
-          <button type="button" class="btn secondary" data-go="timer">開始休息</button>
+          <button type="button" class="btn primary" data-go="log"><span>記成績</span><small>添一筆</small></button>
+          <button type="button" class="btn secondary" data-go="timer"><span>開始休息</span><small>開一盞月</small></button>
         </div>
-        <div class="subject-caps" id="subjectCaps"></div>
-        <p class="day-cap-line" id="dayCapLine">今日一般上限 60 分</p>
-        <p class="overtime-line" id="overtimeLine" hidden></p>
+
+        <section class="paper-section" aria-labelledby="today-progress-title">
+          <div class="section-heading">
+            <h2 id="today-progress-title">今日修習</h2>
+            <span class="mini-seal" aria-hidden="true">進</span>
+          </div>
+          <div class="subject-caps" id="subjectCaps"></div>
+          <p class="day-cap-line" id="dayCapLine">今日一般上限 60 分</p>
+          <p class="overtime-line" id="overtimeLine" hidden></p>
+        </section>
+
         <div class="quick-rules">
-          <p>85 起 1 點 · 每滿多 5 分再＋1 · 1 點＝5 分</p>
-          <p>每科一般最多 20 分 · 全日一般池 60 分 · 每次 100 另＋5</p>
+          <p><strong>換算小訣</strong></p>
+          <p>85 起 1 點 · 每多滿 5 分再＋1 · 1 點＝5 分鐘</p>
+          <p>每科一般最多 20 分 · 每次滿分另加 5 分鐘</p>
         </div>
       </section>
 
-      <!-- 記成績 -->
       <section class="screen" data-screen="log">
-        <h2>記康軒成績</h2>
-        <form id="scoreForm" class="form">
+        <div class="page-title">
+          <span class="title-seal" aria-hidden="true">記</span>
+          <div><p>硯邊小箋</p><h1>記康軒成績</h1></div>
+        </div>
+        <form id="scoreForm" class="form ink-card">
           <label>
-            科目
+            <span class="field-label">科目</span>
             <div class="seg" role="group" aria-label="科目">
               <button type="button" class="seg-btn active" data-subject="國文">國文</button>
               <button type="button" class="seg-btn" data-subject="數學">數學</button>
@@ -136,11 +124,11 @@
             <input type="hidden" name="subject" id="subjectInput" value="國文" />
           </label>
           <label>
-            分數（0–100）
+            <span class="field-label">分數 <small>0–100</small></span>
             <input type="number" name="score" id="scoreInput" min="0" max="100" inputmode="numeric" placeholder="例如 92" required />
           </label>
           <label>
-            單元／冊次（選填）
+            <span class="field-label">單元／冊次 <small>選填</small></span>
             <input type="text" name="unit" id="unitInput" placeholder="例如 第六課" />
           </label>
           <p class="preview" id="scorePreview">輸入分數後，九尾狐會算出可以休息幾分鐘</p>
@@ -149,88 +137,95 @@
         <div class="toast" id="logToast" hidden></div>
       </section>
 
-      <!-- 錢包／紀錄 -->
       <section class="screen" data-screen="wallet">
-        <h2>休息錢包</h2>
-        <div class="stat-grid">
-          <div class="stat">
-            <span class="stat-label">剩餘</span>
-            <span class="stat-value" id="walletBalance">0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">今日一般已賺</span>
-            <span class="stat-value" id="walletTodayRegular">0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">今日 100 加碼</span>
-            <span class="stat-value" id="walletTodayBonus">0</span>
-          </div>
+        <div class="page-title">
+          <span class="title-seal" aria-hidden="true">簿</span>
+          <div><p>時光流水</p><h1>休息錢包</h1></div>
         </div>
-        <p class="day-cap-line" id="walletDayCapLine">今日一般上限 60 分</p>
-        <p class="overtime-line" id="walletOvertimeLine" hidden></p>
-        <p class="hint tight" id="walletHint">一般換算每科上限 20、全日一般池 60；超過部分可當超時繼續賺（設定可關）。100 加碼可一直累加。</p>
-        <h3 class="list-title">最近紀錄</h3>
+        <div class="stat-grid">
+          <div class="stat featured"><span class="stat-label">剩餘可用</span><span><b class="stat-value" id="walletBalance">0</b><small>分</small></span></div>
+          <div class="stat"><span class="stat-label">今日一般</span><span><b class="stat-value" id="walletTodayRegular">0</b><small>分</small></span></div>
+          <div class="stat"><span class="stat-label">滿分加碼</span><span><b class="stat-value" id="walletTodayBonus">0</b><small>分</small></span></div>
+        </div>
+        <div class="ink-note">
+          <p class="day-cap-line" id="walletDayCapLine">今日一般上限 60 分</p>
+          <p class="overtime-line" id="walletOvertimeLine" hidden></p>
+          <p class="hint tight" id="walletHint">一般換算每科上限 20、全日一般池 60；超過部分可當超時繼續賺（設定可關）。100 加碼可一直累加。</p>
+        </div>
+        <div class="section-heading ledger-title">
+          <h2>最近紀錄</h2><span class="brush-rule" aria-hidden="true"></span>
+        </div>
         <ul class="ledger" id="ledger"></ul>
       </section>
 
-      <!-- 休息計時 -->
       <section class="screen" data-screen="timer">
-        <h2>休息計時</h2>
-        <div class="timer-setup" id="timerSetup">
-          <p class="hint">用賺到的時間倒數。剩餘 <strong id="timerAvail">0</strong> 分</p>
-          <label>
-            這次要用幾分鐘
-            <input type="number" id="timerMinutes" min="1" inputmode="numeric" />
-          </label>
-          <label>
-            用途（選填）
-            <div class="seg" id="purposeSeg">
-              <button type="button" class="seg-btn active" data-purpose="電視">電視</button>
-              <button type="button" class="seg-btn" data-purpose="上網">上網</button>
-              <button type="button" class="seg-btn" data-purpose="其他">其他</button>
-            </div>
-          </label>
-          <button type="button" class="btn primary block" id="startTimerBtn">開始倒數</button>
+        <div class="page-title">
+          <span class="title-seal" aria-hidden="true">息</span>
+          <div><p>一盞月色</p><h1>休息計時</h1></div>
         </div>
-        <div class="timer-run" id="timerRun" hidden>
-          <p class="purpose-tag" id="purposeTag">電視</p>
-          <p class="countdown" id="countdown">00:00</p>
-          <div class="timer-actions">
-            <button type="button" class="btn secondary" id="pauseTimerBtn">暫停</button>
-            <button type="button" class="btn danger" id="stopTimerBtn">結束休息</button>
+        <div class="timer-scroll">
+          <div class="timer-setup" id="timerSetup">
+            <p class="timer-balance">可用時光 <strong id="timerAvail">0</strong> 分</p>
+            <label>
+              <span class="field-label">這次要用幾分鐘</span>
+              <input type="number" id="timerMinutes" min="1" inputmode="numeric" />
+            </label>
+            <label>
+              <span class="field-label">休息用途</span>
+              <div class="seg" id="purposeSeg">
+                <button type="button" class="seg-btn active" data-purpose="電視">電視</button>
+                <button type="button" class="seg-btn" data-purpose="上網">上網</button>
+                <button type="button" class="seg-btn" data-purpose="其他">其他</button>
+              </div>
+            </label>
+            <button type="button" class="btn primary block" id="startTimerBtn">開始倒數</button>
+          </div>
+          <div class="timer-run" id="timerRun" hidden>
+            <div class="moon-clock">
+              <span class="moon-ring" aria-hidden="true"></span>
+              <p class="purpose-tag" id="purposeTag">電視</p>
+              <p class="countdown" id="countdown">00:00</p>
+              <p class="clock-caption">靜心休息 · 時到自鳴</p>
+            </div>
+            <div class="timer-actions">
+              <button type="button" class="btn secondary" id="pauseTimerBtn">暫停</button>
+              <button type="button" class="btn danger" id="stopTimerBtn">結束休息</button>
+            </div>
           </div>
         </div>
         <div class="toast" id="timerToast" hidden></div>
       </section>
 
-      <!-- 設定 -->
       <section class="screen" data-screen="settings">
-        <h2>設定</h2>
-        <p class="hint tight">家長可調整「超時仍可賺」。其他規則依定案寫死；可重置本機資料。</p>
-        <ul class="settings-list">
-          <li>匯率：1 點＝5 分鐘</li>
-          <li>每科一般上限：20 分</li>
-          <li>全日一般池：60 分（軟上限）</li>
-          <li>100 分加碼：每次＋5（可累加）</li>
-          <li>84 分以下：0 點</li>
-        </ul>
+        <div class="page-title">
+          <span class="title-seal" aria-hidden="true">規</span>
+          <div><p>家長卷冊</p><h1>設定</h1></div>
+        </div>
+        <p class="hint intro">家長可調整「超時仍可賺」。其他規則依定案保留，也可重置本機資料。</p>
+        <div class="rule-scroll">
+          <div class="rule-row"><span>壹</span><p>匯率</p><strong>1 點＝5 分鐘</strong></div>
+          <div class="rule-row"><span>貳</span><p>每科一般上限</p><strong>20 分</strong></div>
+          <div class="rule-row"><span>參</span><p>全日一般池</p><strong>60 分</strong></div>
+          <div class="rule-row"><span>肆</span><p>100 分加碼</p><strong>每次＋5</strong></div>
+          <div class="rule-row"><span>伍</span><p>84 分以下</p><strong>0 點</strong></div>
+        </div>
         <label class="setting-toggle">
           <span>
             <strong>超過每日上限仍可繼續賺</strong>
-            <small>開＝一般池滿後仍可賺「超時」分鐘，當天就能倒數用；關＝全日一般最多 60（舊硬上限）</small>
+            <small>開啟後，一般池滿了仍可賺「超時」分鐘，當天就能倒數使用。</small>
           </span>
           <input type="checkbox" id="allowOvertimeToggle" checked />
         </label>
-        <button type="button" class="btn secondary block" id="resetBtn">清除本機紀錄（重新開始）</button>
+        <button type="button" class="btn text-danger block" id="resetBtn">清除本機紀錄 · 重新開始</button>
       </section>
     </main>
 
     <nav class="tabbar" aria-label="主要選單">
-      <button type="button" class="tab active" data-go="home">首頁</button>
-      <button type="button" class="tab" data-go="log">記成績</button>
-      <button type="button" class="tab" data-go="wallet">錢包</button>
-      <button type="button" class="tab" data-go="timer">計時</button>
-      <button type="button" class="tab" data-go="settings">設定</button>
+      <button type="button" class="tab active" data-go="home"><span aria-hidden="true">山</span>首頁</button>
+      <button type="button" class="tab" data-go="log"><span aria-hidden="true">記</span>成績</button>
+      <button type="button" class="tab" data-go="wallet"><span aria-hidden="true">簿</span>錢包</button>
+      <button type="button" class="tab" data-go="timer"><span aria-hidden="true">月</span>計時</button>
+      <button type="button" class="tab" data-go="settings"><span aria-hidden="true">印</span>設定</button>
     </nav>
   </div>
   <script src="app.js"></script>
