@@ -6,33 +6,19 @@
   <title>煦煦休息時間</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="bg-decor" aria-hidden="true"></div>
+  <div class="bg-decor" aria-hidden="true"><span class="bg-moon"></span></div>
   <div class="app" id="app">
     <header class="top">
       <div class="brand-block">
         <p class="brand">煦煦休息時間</p>
-        <p class="sub" id="todayLabel">今天 · 國文 → 數學 → 英文</p>
+        <p class="sub" id="todayLabel">月下九尾 · 讀書有成，休息有度</p>
       </div>
       <div class="balance-chip" title="剩餘可休息">
-        <span class="chip-fox" aria-hidden="true">
-          <svg viewBox="0 0 40 40" width="22" height="22">
-            <path d="M11 17l-7-11 12 6z" fill="#eef4fb"/>
-            <path d="M29 17l7-11-12 6z" fill="#eef4fb"/>
-            <path d="M12.5 16l-3.5-5.5 6 3.5z" fill="#9eb6d4"/>
-            <path d="M27.5 16l3.5-5.5-6 3.5z" fill="#9eb6d4"/>
-            <circle cx="20" cy="22" r="9" fill="#f5f8fc"/>
-            <ellipse cx="20" cy="25.5" rx="4.5" ry="3" fill="#d7e3f2"/>
-            <ellipse cx="16.4" cy="21.2" rx="1.6" ry="1.9" fill="#1a2740"/>
-            <ellipse cx="23.6" cy="21.2" rx="1.6" ry="1.9" fill="#1a2740"/>
-            <circle cx="16.8" cy="20.7" r="0.55" fill="#f0b429"/>
-            <circle cx="24" cy="20.7" r="0.55" fill="#f0b429"/>
-            <ellipse cx="20" cy="24.4" rx="1.5" ry="1" fill="#7a8eaa"/>
-          </svg>
-        </span>
+        <span class="chip-seal" aria-hidden="true">休</span>
         <span class="balance-num" id="balanceMinutes">0</span>
         <span class="balance-unit">分</span>
       </div>
@@ -42,92 +28,43 @@
       <!-- 首頁 -->
       <section class="screen active" data-screen="home">
         <div class="hero-panel">
-          <div class="hero-sky" aria-hidden="true">
-            <span class="moon"></span>
-            <span class="foxfire f1"></span>
-            <span class="foxfire f2"></span>
-            <span class="foxfire f3"></span>
-            <span class="lantern-glow"></span>
-          </div>
-          <div class="fox-mascot" aria-hidden="true">
-            <svg class="fox-svg" viewBox="0 0 260 210" width="188" height="152">
-              <defs>
-                <linearGradient id="furSilver" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#ffffff"/>
-                  <stop offset="55%" stop-color="#eef4fb"/>
-                  <stop offset="100%" stop-color="#c9d8ea"/>
-                </linearGradient>
-                <linearGradient id="tailFan" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#ffffff"/>
-                  <stop offset="70%" stop-color="#e8f0fa"/>
-                  <stop offset="100%" stop-color="#a9c0da"/>
-                </linearGradient>
-              </defs>
-              <!-- nine fanned fluffy tails -->
-              <g class="tails">
-                <ellipse cx="78" cy="168" rx="18" ry="48" transform="rotate(-52 78 168)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="92" cy="174" rx="17" ry="50" transform="rotate(-36 92 174)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="108" cy="178" rx="16" ry="52" transform="rotate(-18 108 178)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="124" cy="180" rx="16" ry="54" transform="rotate(-4 124 180)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="140" cy="180" rx="16" ry="54" transform="rotate(10 140 180)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="156" cy="176" rx="16" ry="52" transform="rotate(24 156 176)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="170" cy="170" rx="17" ry="50" transform="rotate(38 170 170)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="182" cy="162" rx="17" ry="48" transform="rotate(50 182 162)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="192" cy="152" rx="16" ry="44" transform="rotate(62 192 152)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-              </g>
-              <!-- body -->
-              <ellipse cx="126" cy="138" rx="36" ry="28" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.3"/>
-              <ellipse cx="126" cy="146" rx="20" ry="14" fill="#dce7f4"/>
-              <!-- neck ruff -->
-              <ellipse cx="126" cy="112" rx="28" ry="16" fill="#f7fbff"/>
-              <!-- head -->
-              <path d="M98 72l-16-28 30 14z" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.2"/>
-              <path d="M154 72l16-28-30 14z" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.2"/>
-              <path d="M100 68l-8-14 16 9z" fill="#9eb6d4"/>
-              <path d="M152 68l8-14-16 9z" fill="#9eb6d4"/>
-              <ellipse cx="126" cy="86" rx="34" ry="30" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.3"/>
-              <ellipse cx="126" cy="98" rx="16" ry="11" fill="#dce7f4"/>
-              <!-- amber eyes -->
-              <ellipse cx="112" cy="84" rx="5.4" ry="6" fill="#1a2740"/>
-              <ellipse cx="140" cy="84" rx="5.4" ry="6" fill="#1a2740"/>
-              <ellipse cx="112" cy="84.5" rx="3.2" ry="3.6" fill="#f0b429"/>
-              <ellipse cx="140" cy="84.5" rx="3.2" ry="3.6" fill="#f0b429"/>
-              <circle cx="113.2" cy="83" r="1.2" fill="#fff6c8"/>
-              <circle cx="141.2" cy="83" r="1.2" fill="#fff6c8"/>
-              <ellipse cx="126" cy="96" rx="4.2" ry="2.6" fill="#7a8eaa"/>
-              <path d="M126 98.5v6" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M126 104.5c-7 4-14 4-19 1.5" fill="none" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M126 104.5c7 4 14 4 19 1.5" fill="none" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <!-- front paws suggestion -->
-              <ellipse cx="112" cy="160" rx="9" ry="6" fill="#eef4fb" stroke="#8ea6c2" stroke-width="1"/>
-              <ellipse cx="140" cy="160" rx="9" ry="6" fill="#eef4fb" stroke="#8ea6c2" stroke-width="1"/>
-            </svg>
+          <div class="hero-art">
+            <img src="assets/fox-moon.webp" alt="月夜下坐在湖畔、九尾展開的平面水墨白狐" />
+            <span class="hero-tag">月下九尾</span>
           </div>
           <div class="hero-copy">
-            <p class="eyebrow">銀白九尾 · 守護你的休息時間</p>
-            <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘</small></p>
-            <p class="hint" id="homeHint">康軒成績好，狐火就更亮</p>
+            <p class="eyebrow">煦煦，今天的月光存好了嗎？</p>
+            <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘可用</small></p>
+            <p class="hint" id="homeHint">記康軒成績，讓月下狐火更亮</p>
           </div>
         </div>
         <div class="action-row">
-          <button type="button" class="btn primary" data-go="log">記成績</button>
-          <button type="button" class="btn secondary" data-go="timer">開始休息</button>
+          <button type="button" class="btn primary" data-go="log">記成績<small>寫一筆</small></button>
+          <button type="button" class="btn secondary" data-go="timer">開始休息<small>陪一會</small></button>
         </div>
-        <div class="subject-caps" id="subjectCaps"></div>
-        <p class="day-cap-line" id="dayCapLine">今日一般上限 60 分</p>
-        <p class="overtime-line" id="overtimeLine" hidden></p>
+        <div class="panel">
+          <div class="panel-head"><h3>今日修煉</h3><span class="mini-seal">月</span></div>
+          <div class="subject-caps" id="subjectCaps"></div>
+          <p class="day-cap-line" id="dayCapLine">今日一般上限 60 分</p>
+          <p class="overtime-line" id="overtimeLine" hidden></p>
+        </div>
         <div class="quick-rules">
-          <p>85 起 1 點 · 每滿多 5 分再＋1 · 1 點＝5 分</p>
+          <p class="rules-title">換算小訣</p>
+          <p>85 起 1 點 · 每滿多 5 分再＋1 · 1 點＝5 分鐘</p>
           <p>每科一般最多 20 分 · 全日一般池 60 分 · 每次 100 另＋5</p>
         </div>
       </section>
 
       <!-- 記成績 -->
       <section class="screen" data-screen="log">
-        <h2>記康軒成績</h2>
-        <form id="scoreForm" class="form">
+        <div class="screen-banner">
+          <img src="assets/fox-moon.webp" alt="" aria-hidden="true" />
+          <div><h2>記一筆成績</h2><p>考得好，休息自然來</p></div>
+          <span class="mini-seal gold">記</span>
+        </div>
+        <form id="scoreForm" class="form panel">
           <label>
-            科目
+            選擇科目
             <div class="seg" role="group" aria-label="科目">
               <button type="button" class="seg-btn active" data-subject="國文">國文</button>
               <button type="button" class="seg-btn" data-subject="數學">數學</button>
@@ -136,26 +73,29 @@
             <input type="hidden" name="subject" id="subjectInput" value="國文" />
           </label>
           <label>
-            分數（0–100）
-            <input type="number" name="score" id="scoreInput" min="0" max="100" inputmode="numeric" placeholder="例如 92" required />
+            這次分數（0–100）
+            <input type="number" name="score" id="scoreInput" min="0" max="100" inputmode="numeric" placeholder="例如 95" required />
           </label>
           <label>
             單元／冊次（選填）
             <input type="text" name="unit" id="unitInput" placeholder="例如 第六課" />
           </label>
           <p class="preview" id="scorePreview">輸入分數後，九尾狐會算出可以休息幾分鐘</p>
-          <button type="submit" class="btn primary block">送出並入帳</button>
+          <button type="submit" class="btn primary block">存入休息錢包<small>確認入帳</small></button>
         </form>
         <div class="toast" id="logToast" hidden></div>
       </section>
 
       <!-- 錢包／紀錄 -->
       <section class="screen" data-screen="wallet">
-        <h2>休息錢包</h2>
+        <div class="screen-banner compact">
+          <div><h2>休息錢包</h2><p>狐狸替你守著每一分鐘</p></div>
+          <span class="mini-seal gold">囊</span>
+        </div>
         <div class="stat-grid">
-          <div class="stat">
-            <span class="stat-label">剩餘</span>
-            <span class="stat-value" id="walletBalance">0</span>
+          <div class="stat hero-stat">
+            <span class="stat-label">剩餘可用</span>
+            <span class="stat-value" id="walletBalance">0</span><span class="stat-unit">分</span>
           </div>
           <div class="stat">
             <span class="stat-label">今日一般已賺</span>
@@ -166,17 +106,23 @@
             <span class="stat-value" id="walletTodayBonus">0</span>
           </div>
         </div>
-        <p class="day-cap-line" id="walletDayCapLine">今日一般上限 60 分</p>
-        <p class="overtime-line" id="walletOvertimeLine" hidden></p>
-        <p class="hint tight" id="walletHint">一般換算每科上限 20、全日一般池 60；超過部分可當超時繼續賺（設定可關）。100 加碼可一直累加。</p>
+        <div class="panel">
+          <p class="day-cap-line" id="walletDayCapLine">今日一般上限 60 分</p>
+          <p class="overtime-line" id="walletOvertimeLine" hidden></p>
+          <p class="hint tight" id="walletHint">一般換算每科上限 20、全日一般池 60；超過部分可當超時繼續賺（設定可關）。100 加碼可一直累加。</p>
+        </div>
         <h3 class="list-title">最近紀錄</h3>
         <ul class="ledger" id="ledger"></ul>
       </section>
 
       <!-- 休息計時 -->
       <section class="screen" data-screen="timer">
-        <h2>休息計時</h2>
-        <div class="timer-setup" id="timerSetup">
+        <div class="screen-banner compact">
+          <div><h2>安心休息中</h2><p>狐狸守著月光，不用趕</p></div>
+          <span class="mini-seal gold">月</span>
+        </div>
+        <div class="timer-setup panel" id="timerSetup">
+          <div class="timer-setup-art"><img src="assets/fox-moon.webp" alt="" aria-hidden="true" /></div>
           <p class="hint">用賺到的時間倒數。剩餘 <strong id="timerAvail">0</strong> 分</p>
           <label>
             這次要用幾分鐘
@@ -190,14 +136,22 @@
               <button type="button" class="seg-btn" data-purpose="其他">其他</button>
             </div>
           </label>
-          <button type="button" class="btn primary block" id="startTimerBtn">開始倒數</button>
+          <button type="button" class="btn primary block" id="startTimerBtn">開始倒數<small>月亮開始走</small></button>
         </div>
-        <div class="timer-run" id="timerRun" hidden>
+        <div class="timer-run panel" id="timerRun" hidden>
           <p class="purpose-tag" id="purposeTag">電視</p>
+          <div class="ring-wrap" aria-hidden="true">
+            <svg class="ring" viewBox="0 0 260 260" width="260" height="260">
+              <circle cx="130" cy="130" r="112" fill="none" stroke="rgba(143,176,217,.25)" stroke-width="12" />
+              <circle id="timerRingFg" cx="130" cy="130" r="112" fill="none" stroke="#d9b36a" stroke-width="12" stroke-linecap="round" stroke-dasharray="703.7" stroke-dashoffset="0" transform="rotate(-90 130 130)" />
+            </svg>
+            <img class="ring-fox" src="assets/fox-moon.webp" alt="" />
+          </div>
           <p class="countdown" id="countdown">00:00</p>
+          <p class="ring-note">月亮走完這一圈，休息就結束</p>
           <div class="timer-actions">
             <button type="button" class="btn secondary" id="pauseTimerBtn">暫停</button>
-            <button type="button" class="btn danger" id="stopTimerBtn">結束休息</button>
+            <button type="button" class="btn primary" id="stopTimerBtn">結束休息</button>
           </div>
         </div>
         <div class="toast" id="timerToast" hidden></div>
@@ -205,7 +159,10 @@
 
       <!-- 設定 -->
       <section class="screen" data-screen="settings">
-        <h2>設定</h2>
+        <div class="screen-banner compact">
+          <div><h2>設定</h2><p>家長小閣 · 規則與超時開關</p></div>
+          <span class="mini-seal gold">印</span>
+        </div>
         <p class="hint tight">家長可調整「超時仍可賺」。其他規則依定案寫死；可重置本機資料。</p>
         <ul class="settings-list">
           <li>匯率：1 點＝5 分鐘</li>
@@ -226,11 +183,11 @@
     </main>
 
     <nav class="tabbar" aria-label="主要選單">
-      <button type="button" class="tab active" data-go="home">首頁</button>
-      <button type="button" class="tab" data-go="log">記成績</button>
-      <button type="button" class="tab" data-go="wallet">錢包</button>
-      <button type="button" class="tab" data-go="timer">計時</button>
-      <button type="button" class="tab" data-go="settings">設定</button>
+      <button type="button" class="tab active" data-go="home"><span class="tab-seal">山</span>首頁</button>
+      <button type="button" class="tab" data-go="log"><span class="tab-seal">記</span>成績</button>
+      <button type="button" class="tab" data-go="wallet"><span class="tab-seal">囊</span>錢包</button>
+      <button type="button" class="tab" data-go="timer"><span class="tab-seal">月</span>計時</button>
+      <button type="button" class="tab" data-go="settings"><span class="tab-seal">印</span>設定</button>
     </nav>
   </div>
   <script src="app.js"></script>

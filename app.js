@@ -150,6 +150,12 @@
   function updateCountdownDisplay() {
     const sec = Math.ceil(getRemainingMs() / 1000);
     document.getElementById("countdown").textContent = formatTime(sec);
+    const ring = document.getElementById("timerRingFg");
+    if (ring) {
+      const total = timer.startedWithMs > 0 ? timer.startedWithMs : 1;
+      const frac = Math.min(1, Math.max(0, getRemainingMs() / total));
+      ring.style.strokeDashoffset = String(703.7 * (1 - frac));
+    }
   }
 
   function showTimerRunUi() {
@@ -328,7 +334,7 @@
     hint.textContent =
       state.balance > 0
         ? "可以按「開始休息」，用計時表倒數使用"
-        : "記康軒成績，讓銀白狐火更亮";
+        : "記康軒成績，讓月下狐火更亮";
 
     const caps = document.getElementById("subjectCaps");
     caps.innerHTML = SUBJECTS.map((s) => {
@@ -339,7 +345,7 @@
 
     const ledger = document.getElementById("ledger");
     if (!state.ledger.length) {
-      ledger.innerHTML = `<li><div>尚無紀錄<div class="meta">銀白九尾靜候第一筆康軒成績</div></div></li>`;
+      ledger.innerHTML = `<li><div>尚無紀錄<div class="meta">月下九尾靜候第一筆康軒成績</div></div></li>`;
     } else {
       ledger.innerHTML = state.ledger
         .map((item) => {
