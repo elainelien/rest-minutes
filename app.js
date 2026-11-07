@@ -1,11 +1,14 @@
 (() => {
   const STORAGE_KEY = "xuxu-rest-v1";
   const TIMER_KEY = "xuxu-rest-timer-v1";
+  const END_ALERT_KEY = "xuxu-rest-end-alert-v1";
   const SUBJECTS = ["國文", "數學", "英文"];
   const POINT_MINUTES = 5;
   const SUBJECT_CAP = 20;
   const DAY_CAP = 60;
   const PERFECT_BONUS = 5;
+  const LEDGER_LIMIT = 200;
+  const DAY_HISTORY_LIMIT = 45;
 
   const defaultState = () => ({
     balance: 0,
@@ -14,13 +17,17 @@
     todayRegular: 0,
     todayOvertime: 0,
     todayBonus: 0,
+    todayRedeemed: 0,
     allowOvertimeEarn: true,
+    endSoundOn: true,
     ledger: [],
+    dayHistory: {},
   });
 
   let state = load();
   let selectedSubject = "國文";
   let selectedPurpose = "電視";
+  let selectedStatsDay = todayKey();
   let timer = {
     running: false,
     paused: false,
@@ -28,13 +35,27 @@
     remainingMs: 0,
     startedWithMs: 0,
     purpose: "電視",
+    sessionId: null,
     intervalId: null,
   };
   let finishing = false;
   let audioCtx = null;
+  let endAlert = {
+    id: null,
+    shown: false,
+    acked: false,
+    charge: 0,
+    purpose: "",
+  };
 
   function todayKey() {
     const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }
+
+  function dayKeyFromIso(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
   }
 
@@ -43,7 +64,15 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw);
-      return { ...defaultState(), ...parsed };
+      const merged = { ...defaultState(), ...parsed };
+      if (!merged.dayHistory || typeof merged.dayHistory !== "object") {
+        merged.dayHistory = {};
+      }
+      if (!Number.isFinite(merged.todayRedeemed)) merged.todayRedeemed = 0;
+      if (typeof merged.endSoundOn !== "boolean") merged.endSoundOn = true;
+      migrateLedger(merged);
+      rebuildDayHistoryFromLedger(merged);
+      return merged;
     } catch {
       return defaultState();
     }
@@ -67,6 +96,7 @@
         remainingMs: timer.remainingMs,
         startedWithMs: timer.startedWithMs,
         purpose: timer.purpose,
+        sessionId: timer.sessionId,
       })
     );
   }
@@ -85,16 +115,168 @@
     }
   }
 
+  function emptyDayBucket() {
+    return {
+      scores: Object.fromEntries(SUBJECTS.map((s) => [s, []])),
+      regular: 0,
+      overtime: 0,
+      bonus: 0,
+      redeemed: 0,
+    };
+  }
+
+  function ensureDayBucket(target, day) {
+    if (!target.dayHistory[day]) {
+      target.dayHistory[day] = emptyDayBucket();
+    }
+    const bucket = target.dayHistory[day];
+    if (!bucket.scores) bucket.scores = Object.fromEntries(SUBJECTS.map((s) => [s, []]));
+    SUBJECTS.forEach((s) => {
+      if (!Array.isArray(bucket.scores[s])) bucket.scores[s] = [];
+    });
+    bucket.regular = Number(bucket.regular) || 0;
+    bucket.overtime = Number(bucket.overtime) || 0;
+    bucket.bonus = Number(bucket.bonus) || 0;
+    bucket.redeemed = Number(bucket.redeemed) || 0;
+    return bucket;
+  }
+
+  function pruneDayHistory(target) {
+    const keys = Object.keys(target.dayHistory || {}).sort(compareDayKeysDesc);
+    if (keys.length <= DAY_HISTORY_LIMIT) return;
+    keys.slice(DAY_HISTORY_LIMIT).forEach((k) => {
+      delete target.dayHistory[k];
+    });
+  }
+
+  function compareDayKeysDesc(a, b) {
+    const pa = a.split("-").map(Number);
+    const pb = b.split("-").map(Number);
+    for (let i = 0; i < 3; i += 1) {
+      if (pa[i] !== pb[i]) return pb[i] - pa[i];
+    }
+    return 0;
+  }
+
+  function formatDayLabel(day) {
+    const parts = String(day).split("-").map(Number);
+    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return day;
+    const label = `${parts[1]}/${parts[2]}`;
+    return day === todayKey() ? `${label}（今天）` : label;
+  }
+
+  function migrateLedger(target) {
+    target.ledger = (target.ledger || []).map((item) => {
+      if (item.kind) return item;
+      const day = dayKeyFromIso(item.at) || target.day;
+      const title = String(item.title || "");
+      const scoreMatch = title.match(/^(國文|數學|英文)\s+(\d+)\s*分$/);
+      if (scoreMatch) {
+        return {
+          ...item,
+          kind: "earn",
+          subject: scoreMatch[1],
+          score: Number(scoreMatch[2]),
+          dayKey: day,
+          regular: Math.max(0, Number(item.delta) || 0),
+          overtime: 0,
+          bonus: 0,
+        };
+      }
+      if (title === "休息時間到" || title === "結束休息") {
+        const mins = Math.abs(Number(item.delta) || 0);
+        return {
+          ...item,
+          kind: "redeem",
+          dayKey: day,
+          minutes: mins,
+        };
+      }
+      return { ...item, dayKey: day, kind: item.kind || "other" };
+    });
+  }
+
+  function rebuildDayHistoryFromLedger(target) {
+    const fromLedger = {};
+    (target.ledger || []).forEach((item) => {
+      const day = item.dayKey || dayKeyFromIso(item.at);
+      if (!day) return;
+      if (!fromLedger[day]) fromLedger[day] = emptyDayBucket();
+      const bucket = fromLedger[day];
+      if (item.kind === "earn" && item.subject && SUBJECTS.includes(item.subject)) {
+        if (Number.isFinite(item.score)) bucket.scores[item.subject].push(Number(item.score));
+        bucket.regular += Number(item.regular) || 0;
+        bucket.overtime += Number(item.overtime) || 0;
+        bucket.bonus += Number(item.bonus) || 0;
+      } else if (item.kind === "redeem") {
+        bucket.redeemed += Number(item.minutes) || Math.abs(Number(item.delta) || 0);
+      }
+    });
+
+    const merged = {};
+    const days = new Set([
+      ...Object.keys(target.dayHistory || {}),
+      ...Object.keys(fromLedger),
+      target.day || todayKey(),
+    ]);
+
+    days.forEach((day) => {
+      const prev = target.dayHistory?.[day];
+      const led = fromLedger[day];
+      const bucket = emptyDayBucket();
+      SUBJECTS.forEach((s) => {
+        const prevScores = Array.isArray(prev?.scores?.[s]) ? prev.scores[s] : [];
+        const ledScores = Array.isArray(led?.scores?.[s]) ? led.scores[s] : [];
+        // Prefer the richer score list (ledger may be truncated).
+        bucket.scores[s] = ledScores.length >= prevScores.length ? [...ledScores] : [...prevScores];
+      });
+      bucket.regular = Math.max(Number(prev?.regular) || 0, Number(led?.regular) || 0);
+      bucket.overtime = Math.max(Number(prev?.overtime) || 0, Number(led?.overtime) || 0);
+      bucket.bonus = Math.max(Number(prev?.bonus) || 0, Number(led?.bonus) || 0);
+      bucket.redeemed = Math.max(Number(prev?.redeemed) || 0, Number(led?.redeemed) || 0);
+      merged[day] = bucket;
+    });
+
+    // Live today counters are authoritative for the current day totals.
+    const today = target.day || todayKey();
+    if (!merged[today]) merged[today] = emptyDayBucket();
+    merged[today].regular = Number(target.todayRegular) || 0;
+    merged[today].overtime = Number(target.todayOvertime) || 0;
+    merged[today].bonus = Number(target.todayBonus) || 0;
+    merged[today].redeemed = Number(target.todayRedeemed) || 0;
+
+    target.dayHistory = merged;
+    pruneDayHistory(target);
+  }
+
+  function syncTodayIntoHistory() {
+    const bucket = ensureDayBucket(state, state.day);
+    bucket.regular = state.todayRegular || 0;
+    bucket.overtime = state.todayOvertime || 0;
+    bucket.bonus = state.todayBonus || 0;
+    bucket.redeemed = state.todayRedeemed || 0;
+  }
+
   function rollDayIfNeeded() {
     const key = todayKey();
-    if (state.day === key) return;
+    if (state.day === key) {
+      syncTodayIntoHistory();
+      return;
+    }
+    syncTodayIntoHistory();
     state.day = key;
     state.regularBySubject = Object.fromEntries(SUBJECTS.map((s) => [s, 0]));
     state.todayRegular = 0;
     state.todayOvertime = 0;
     state.todayBonus = 0;
+    state.todayRedeemed = 0;
+    ensureDayBucket(state, key);
+    pruneDayHistory(state);
     // balance carries over
     save();
+    if (selectedStatsDay !== key && !state.dayHistory[selectedStatsDay]) {
+      selectedStatsDay = key;
+    }
   }
 
   function scoreToPoints(score) {
@@ -129,9 +311,10 @@
     state.ledger.unshift({
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       at: new Date().toISOString(),
+      dayKey: state.day,
       ...entry,
     });
-    state.ledger = state.ledger.slice(0, 80);
+    state.ledger = state.ledger.slice(0, LEDGER_LIMIT);
   }
 
   function formatTime(sec) {
@@ -211,24 +394,39 @@
   }
 
   function playTimeUpChime() {
+    if (state.endSoundOn === false) return false;
     const ctx = ensureAudio();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      const t0 = now + i * 0.14;
-      gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t0);
-      osc.stop(t0 + 0.34);
-    });
+    if (!ctx) return false;
+    try {
+      const now = ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        const t0 = now + i * 0.14;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.34);
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function vibrateTimeUp() {
+    if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return false;
+    try {
+      return Boolean(navigator.vibrate([180, 80, 180, 80, 260]));
+    } catch {
+      return false;
+    }
   }
 
   function maybeRequestNotification() {
@@ -251,6 +449,117 @@
     }
   }
 
+  function persistEndAlert() {
+    if (!endAlert.id || endAlert.acked) {
+      try {
+        sessionStorage.removeItem(END_ALERT_KEY);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    try {
+      sessionStorage.setItem(
+        END_ALERT_KEY,
+        JSON.stringify({
+          id: endAlert.id,
+          shown: endAlert.shown,
+          acked: endAlert.acked,
+          charge: endAlert.charge,
+          purpose: endAlert.purpose,
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  function loadPendingEndAlert() {
+    try {
+      const raw = sessionStorage.getItem(END_ALERT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.id || parsed.acked) {
+        sessionStorage.removeItem(END_ALERT_KEY);
+        return;
+      }
+      endAlert = {
+        id: parsed.id,
+        shown: Boolean(parsed.shown),
+        acked: false,
+        charge: Number(parsed.charge) || 0,
+        purpose: parsed.purpose || "",
+      };
+      showEndAlertUi(false);
+    } catch {
+      // ignore
+    }
+  }
+
+  function showEndAlertUi(withEffects) {
+    const modal = document.getElementById("endAlert");
+    if (!modal || !endAlert.id || endAlert.acked) return;
+
+    const meta = document.getElementById("endAlertMeta");
+    const body = document.getElementById("endAlertBody");
+    body.textContent = "月亮走完這一圈了，回來看看錢包吧。";
+    meta.textContent = endAlert.charge > 0
+      ? `已扣除 ${endAlert.charge} 分${endAlert.purpose ? ` · ${endAlert.purpose}` : ""}`
+      : endAlert.purpose
+        ? `用途：${endAlert.purpose}`
+        : "";
+
+    modal.hidden = false;
+    const alreadyShown = endAlert.shown;
+    endAlert.shown = true;
+    persistEndAlert();
+
+    if (withEffects && !alreadyShown) {
+      playTimeUpChime();
+      vibrateTimeUp();
+      notifyRestEnded();
+    }
+
+    const ack = document.getElementById("endAlertAck");
+    if (ack) {
+      setTimeout(() => ack.focus(), 30);
+    }
+  }
+
+  function fireRestEndAlert({ id, charge, purpose }) {
+    if (!id) return;
+    if (endAlert.acked && endAlert.id === id) return;
+    if (endAlert.id === id && endAlert.shown) {
+      // Keep modal visible if already shown but not acked.
+      showEndAlertUi(false);
+      return;
+    }
+    endAlert = {
+      id,
+      shown: false,
+      acked: false,
+      charge: Number(charge) || 0,
+      purpose: purpose || "",
+    };
+    showEndAlertUi(true);
+  }
+
+  function acknowledgeEndAlert() {
+    if (!endAlert.id) {
+      hideEndAlertUi();
+      return;
+    }
+    endAlert.acked = true;
+    endAlert.shown = true;
+    persistEndAlert();
+    hideEndAlertUi();
+  }
+
+  function hideEndAlertUi() {
+    const modal = document.getElementById("endAlert");
+    if (modal) modal.hidden = true;
+  }
+
   function syncFromWallClock() {
     if (finishing) return;
     if (!timer.running && !timer.paused) return;
@@ -264,6 +573,14 @@
 
     if (timer.running && timer.remainingMs <= 0) {
       finishTimer(true);
+    }
+  }
+
+  function handleVisibilityOrFocus() {
+    syncFromWallClock();
+    if (endAlert.id && !endAlert.acked) {
+      // Re-surface after background / silent tabs without replaying effects.
+      showEndAlertUi(false);
     }
   }
 
@@ -318,6 +635,74 @@
 
     const toggle = document.getElementById("allowOvertimeToggle");
     if (toggle) toggle.checked = overtimeOn;
+    const soundToggle = document.getElementById("endSoundToggle");
+    if (soundToggle) soundToggle.checked = state.endSoundOn !== false;
+  }
+
+  function getStatsForDay(day) {
+    const bucket = state.dayHistory[day] || emptyDayBucket();
+    if (day === state.day) {
+      return {
+        scores: bucket.scores,
+        regular: state.todayRegular || 0,
+        overtime: state.todayOvertime || 0,
+        bonus: state.todayBonus || 0,
+        redeemed: state.todayRedeemed || 0,
+      };
+    }
+    return {
+      scores: bucket.scores || Object.fromEntries(SUBJECTS.map((s) => [s, []])),
+      regular: Number(bucket.regular) || 0,
+      overtime: Number(bucket.overtime) || 0,
+      bonus: Number(bucket.bonus) || 0,
+      redeemed: Number(bucket.redeemed) || 0,
+    };
+  }
+
+  function renderStats() {
+    const select = document.getElementById("statsDaySelect");
+    const scoresEl = document.getElementById("statsScores");
+    const restEl = document.getElementById("statsRest");
+    if (!select || !scoresEl || !restEl) return;
+
+    const today = todayKey();
+    const days = new Set([today, state.day, ...Object.keys(state.dayHistory || {})]);
+    // Include days that only appear in ledger (migration edge cases).
+    (state.ledger || []).forEach((item) => {
+      const day = item.dayKey || dayKeyFromIso(item.at);
+      if (day) days.add(day);
+    });
+    const dayList = [...days].sort(compareDayKeysDesc).slice(0, DAY_HISTORY_LIMIT);
+    if (!dayList.includes(selectedStatsDay)) {
+      selectedStatsDay = today;
+    }
+
+    const prev = select.value;
+    select.innerHTML = dayList
+      .map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(formatDayLabel(day))}</option>`)
+      .join("");
+    select.value = selectedStatsDay;
+    if (select.value !== selectedStatsDay && dayList.length) {
+      selectedStatsDay = dayList[0];
+      select.value = selectedStatsDay;
+    }
+    if (prev && prev !== select.value) {
+      // keep selectedStatsDay authoritative
+    }
+
+    const stats = getStatsForDay(selectedStatsDay);
+    scoresEl.innerHTML = SUBJECTS.map((subject) => {
+      const list = Array.isArray(stats.scores?.[subject]) ? stats.scores[subject] : [];
+      const text = list.length ? list.join("、") : "尚無成績";
+      const cls = list.length ? "" : " empty";
+      return `<div class="stats-score-row"><strong>${subject}</strong><span class="${cls.trim()}">${escapeHtml(text)}</span></div>`;
+    }).join("");
+
+    const earned = stats.regular + stats.overtime + stats.bonus;
+    restEl.innerHTML =
+      `<p>已賺休息 <strong>${earned}</strong> 分` +
+      `（一般 ${stats.regular}＋超時 ${stats.overtime}＋加碼 ${stats.bonus}）</p>` +
+      `<p>已兌換休息 <strong>${stats.redeemed}</strong> 分</p>`;
   }
 
   function render() {
@@ -329,6 +714,7 @@
     document.getElementById("walletTodayBonus").textContent = state.todayBonus;
     document.getElementById("timerAvail").textContent = state.balance;
     updateCapCopy();
+    renderStats();
 
     const hint = document.getElementById("homeHint");
     hint.textContent =
@@ -423,7 +809,21 @@
     state.todayOvertime = (state.todayOvertime || 0) + award.overtimeGranted;
     state.todayBonus += award.bonus;
     state.balance += award.total;
+
+    const bucket = ensureDayBucket(state, state.day);
+    bucket.scores[selectedSubject].push(score);
+    bucket.regular = state.todayRegular;
+    bucket.overtime = state.todayOvertime;
+    bucket.bonus = state.todayBonus;
+
     addLedger({
+      kind: "earn",
+      subject: selectedSubject,
+      score,
+      points: award.points,
+      regular: award.regularGranted,
+      overtime: award.overtimeGranted,
+      bonus: award.bonus,
       title: `${selectedSubject} ${score} 分`,
       detail: [
         unit || "康軒刷題",
@@ -436,7 +836,9 @@
         .join(" · "),
       delta: award.total,
     });
+    pruneDayHistory(state);
     save();
+    selectedStatsDay = state.day;
     document.getElementById("scoreInput").value = "";
     document.getElementById("unitInput").value = "";
     updatePreview();
@@ -474,11 +876,17 @@
       return;
     }
     timer.purpose = selectedPurpose;
+    timer.sessionId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     timer.startedWithMs = Math.round(mins * 60) * 1000;
     timer.remainingMs = timer.startedWithMs;
     timer.endAt = Date.now() + timer.remainingMs;
     timer.running = true;
     timer.paused = false;
+    // New session clears prior end-alert ack state only when starting fresh.
+    if (endAlert.acked || !endAlert.id) {
+      endAlert = { id: null, shown: false, acked: false, charge: 0, purpose: "" };
+      persistEndAlert();
+    }
     persistTimer();
     maybeRequestNotification();
     showTimerRunUi();
@@ -514,10 +922,10 @@
     if (!timer.running && !timer.paused && timer.startedWithMs <= 0) return;
     finishing = true;
 
-    const wasHidden = document.hidden;
     const remainingMs = getRemainingMs();
     const startedWithMs = timer.startedWithMs;
     const purpose = timer.purpose;
+    const sessionId = timer.sessionId || `${Date.now()}-ended`;
 
     clearTickInterval();
     timer.running = false;
@@ -525,6 +933,7 @@
     timer.endAt = null;
     timer.remainingMs = 0;
     timer.startedWithMs = 0;
+    timer.sessionId = null;
     clearPersistedTimer();
 
     const usedMs = Math.max(0, startedWithMs - remainingMs);
@@ -532,11 +941,18 @@
     const charge = usedMs <= 0 ? 0 : Math.min(state.balance, usedMin);
     if (charge > 0) {
       state.balance -= charge;
+      state.todayRedeemed = (state.todayRedeemed || 0) + charge;
+      const bucket = ensureDayBucket(state, state.day);
+      bucket.redeemed = state.todayRedeemed;
       addLedger({
+        kind: "redeem",
+        minutes: charge,
+        purpose,
         title: completed ? "休息時間到" : "結束休息",
         detail: `${purpose} · 用了 ${charge} 分`,
         delta: -charge,
       });
+      pruneDayHistory(state);
       save();
     }
 
@@ -547,10 +963,7 @@
       completed ? `休息時間到！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
     );
     if (completed) {
-      playTimeUpChime();
-      if (wasHidden || (typeof Notification !== "undefined" && Notification.permission === "granted")) {
-        notifyRestEnded();
-      }
+      fireRestEndAlert({ id: sessionId, charge, purpose });
     }
     finishing = false;
   }
@@ -559,6 +972,7 @@
     const saved = loadPersistedTimer();
     if (!saved || !saved.startedWithMs) return false;
     timer.purpose = saved.purpose || "電視";
+    timer.sessionId = saved.sessionId || `${Date.now()}-restored`;
     timer.startedWithMs = Number(saved.startedWithMs) || 0;
     timer.remainingMs = Math.max(0, Number(saved.remainingMs) || 0);
     timer.endAt = saved.endAt == null ? null : Number(saved.endAt);
@@ -617,6 +1031,21 @@
     updatePreview();
     render();
   });
+  document.getElementById("endSoundToggle").addEventListener("change", (event) => {
+    state.endSoundOn = Boolean(event.target.checked);
+    save();
+  });
+  document.getElementById("statsDaySelect").addEventListener("change", (event) => {
+    selectedStatsDay = event.target.value || todayKey();
+    renderStats();
+  });
+  document.getElementById("endAlertAck").addEventListener("click", acknowledgeEndAlert);
+  document.getElementById("endAlertBackdrop").addEventListener("click", acknowledgeEndAlert);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && endAlert.id && !endAlert.acked) {
+      acknowledgeEndAlert();
+    }
+  });
   document.getElementById("resetBtn").addEventListener("click", () => {
     if (!confirm("確定清除本機所有點數與紀錄？")) return;
     clearTickInterval();
@@ -627,24 +1056,37 @@
       remainingMs: 0,
       startedWithMs: 0,
       purpose: "電視",
+      sessionId: null,
       intervalId: null,
     };
     clearPersistedTimer();
+    endAlert = { id: null, shown: false, acked: false, charge: 0, purpose: "" };
+    persistEndAlert();
+    hideEndAlertUi();
     const keepOvertime = state.allowOvertimeEarn !== false;
+    const keepSound = state.endSoundOn !== false;
     state = defaultState();
     state.allowOvertimeEarn = keepOvertime;
+    state.endSoundOn = keepSound;
+    selectedStatsDay = todayKey();
     save();
     showTimerSetupUi();
     render();
     go("home");
   });
 
-  document.addEventListener("visibilitychange", syncFromWallClock);
-  window.addEventListener("pageshow", syncFromWallClock);
-  window.addEventListener("focus", syncFromWallClock);
+  document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+  window.addEventListener("pageshow", handleVisibilityOrFocus);
+  window.addEventListener("focus", handleVisibilityOrFocus);
+  // Test / automation hook: dispatch to force a completed rest end without waiting.
+  window.addEventListener("xuxu-rest-force-end", () => {
+    if (timer.running || timer.paused) finishTimer(true);
+  });
 
   rollDayIfNeeded();
+  selectedStatsDay = todayKey();
   render();
   updatePreview();
+  loadPendingEndAlert();
   restoreTimerFromStorage();
 })();
