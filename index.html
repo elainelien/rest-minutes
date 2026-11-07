@@ -20,17 +20,20 @@
       <div class="balance-chip" title="剩餘可休息">
         <span class="chip-fox" aria-hidden="true">
           <svg viewBox="0 0 40 40" width="22" height="22">
-            <path d="M11 17l-7-11 12 6z" fill="#eef4fb"/>
-            <path d="M29 17l7-11-12 6z" fill="#eef4fb"/>
-            <path d="M12.5 16l-3.5-5.5 6 3.5z" fill="#9eb6d4"/>
-            <path d="M27.5 16l3.5-5.5-6 3.5z" fill="#9eb6d4"/>
-            <circle cx="20" cy="22" r="9" fill="#f5f8fc"/>
-            <ellipse cx="20" cy="25.5" rx="4.5" ry="3" fill="#d7e3f2"/>
-            <ellipse cx="16.4" cy="21.2" rx="1.6" ry="1.9" fill="#1a2740"/>
-            <ellipse cx="23.6" cy="21.2" rx="1.6" ry="1.9" fill="#1a2740"/>
-            <circle cx="16.8" cy="20.7" r="0.55" fill="#f0b429"/>
-            <circle cx="24" cy="20.7" r="0.55" fill="#f0b429"/>
-            <ellipse cx="20" cy="24.4" rx="1.5" ry="1" fill="#7a8eaa"/>
+            <path d="M11 16l-6-10 11 6z" fill="#fff"/>
+            <path d="M29 16l6-10-11 6z" fill="#fff"/>
+            <path d="M12.5 15l-3-5 6 3.5z" fill="#f7b6c2"/>
+            <path d="M27.5 15l3-5-6 3.5z" fill="#f7b6c2"/>
+            <circle cx="20" cy="22" r="9.5" fill="#fff"/>
+            <ellipse cx="16.2" cy="21.4" rx="2.1" ry="2.4" fill="#1a2740"/>
+            <ellipse cx="23.8" cy="21.4" rx="2.1" ry="2.4" fill="#1a2740"/>
+            <ellipse cx="16.2" cy="21.6" rx="1.2" ry="1.4" fill="#f0b429"/>
+            <ellipse cx="23.8" cy="21.6" rx="1.2" ry="1.4" fill="#f0b429"/>
+            <circle cx="16.6" cy="20.9" r="0.45" fill="#fff6c8"/>
+            <circle cx="24.2" cy="20.9" r="0.45" fill="#fff6c8"/>
+            <ellipse cx="20" cy="24.6" rx="1.3" ry="0.9" fill="#f3a0b0"/>
+            <path d="M14.5 24.2c1.2 1.4 2.6 1.4 3 0" fill="none" stroke="#f7b6c2" stroke-width="1" stroke-linecap="round"/>
+            <path d="M22.5 24.2c1.2 1.4 2.6 1.4 3 0" fill="none" stroke="#f7b6c2" stroke-width="1" stroke-linecap="round"/>
           </svg>
         </span>
         <span class="balance-num" id="balanceMinutes">0</span>
@@ -44,69 +47,78 @@
         <div class="hero-panel">
           <div class="hero-sky" aria-hidden="true">
             <span class="moon"></span>
+            <span class="blossom b1"></span>
+            <span class="blossom b2"></span>
             <span class="foxfire f1"></span>
             <span class="foxfire f2"></span>
             <span class="foxfire f3"></span>
             <span class="lantern-glow"></span>
           </div>
           <div class="fox-mascot" aria-hidden="true">
-            <svg class="fox-svg" viewBox="0 0 260 210" width="188" height="152">
+            <svg class="fox-svg" viewBox="0 0 260 220" width="190" height="160">
               <defs>
-                <linearGradient id="furSilver" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="furWhite" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#ffffff"/>
-                  <stop offset="55%" stop-color="#eef4fb"/>
-                  <stop offset="100%" stop-color="#c9d8ea"/>
+                  <stop offset="100%" stop-color="#e9f1fb"/>
                 </linearGradient>
-                <linearGradient id="tailFan" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="tailBloom" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#ffffff"/>
-                  <stop offset="70%" stop-color="#e8f0fa"/>
-                  <stop offset="100%" stop-color="#a9c0da"/>
+                  <stop offset="100%" stop-color="#d7e4f4"/>
+                </linearGradient>
+                <linearGradient id="rockTone" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#6f879e"/>
+                  <stop offset="100%" stop-color="#44586d"/>
                 </linearGradient>
               </defs>
-              <!-- nine fanned fluffy tails -->
+              <!-- rock seat -->
+              <ellipse cx="130" cy="188" rx="58" ry="16" fill="#3a5168" opacity="0.35"/>
+              <path d="M78 176c8-18 28-28 52-28s44 10 52 28c-12 10-34 16-52 16s-40-6-52-16z" fill="url(#rockTone)"/>
+              <ellipse cx="118" cy="168" rx="7" ry="3" fill="#8fbf8a" opacity="0.8"/>
+              <ellipse cx="148" cy="172" rx="5" ry="2.5" fill="#8fbf8a" opacity="0.7"/>
+              <!-- nine bushy tails in a bloom fan -->
               <g class="tails">
-                <ellipse cx="78" cy="168" rx="18" ry="48" transform="rotate(-52 78 168)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="92" cy="174" rx="17" ry="50" transform="rotate(-36 92 174)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="108" cy="178" rx="16" ry="52" transform="rotate(-18 108 178)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="124" cy="180" rx="16" ry="54" transform="rotate(-4 124 180)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="140" cy="180" rx="16" ry="54" transform="rotate(10 140 180)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="156" cy="176" rx="16" ry="52" transform="rotate(24 156 176)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="170" cy="170" rx="17" ry="50" transform="rotate(38 170 170)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="182" cy="162" rx="17" ry="48" transform="rotate(50 182 162)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
-                <ellipse cx="192" cy="152" rx="16" ry="44" transform="rotate(62 192 152)" fill="url(#tailFan)" stroke="#8ea6c2" stroke-width="1.2"/>
+                <ellipse cx="78" cy="128" rx="16" ry="42" transform="rotate(-70 78 128)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="88" cy="118" rx="15" ry="44" transform="rotate(-50 88 118)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="102" cy="110" rx="15" ry="46" transform="rotate(-30 102 110)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="118" cy="106" rx="14" ry="48" transform="rotate(-12 118 106)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="134" cy="104" rx="14" ry="48" transform="rotate(8 134 104)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="150" cy="108" rx="15" ry="46" transform="rotate(26 150 108)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="164" cy="116" rx="15" ry="44" transform="rotate(46 164 116)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="174" cy="128" rx="16" ry="42" transform="rotate(64 174 128)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
+                <ellipse cx="180" cy="142" rx="15" ry="38" transform="rotate(78 180 142)" fill="url(#tailBloom)" stroke="#b7c9de" stroke-width="1.1"/>
               </g>
-              <!-- body -->
-              <ellipse cx="126" cy="138" rx="36" ry="28" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.3"/>
-              <ellipse cx="126" cy="146" rx="20" ry="14" fill="#dce7f4"/>
-              <!-- neck ruff -->
-              <ellipse cx="126" cy="112" rx="28" ry="16" fill="#f7fbff"/>
-              <!-- head -->
-              <path d="M98 72l-16-28 30 14z" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.2"/>
-              <path d="M154 72l16-28-30 14z" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.2"/>
-              <path d="M100 68l-8-14 16 9z" fill="#9eb6d4"/>
-              <path d="M152 68l8-14-16 9z" fill="#9eb6d4"/>
-              <ellipse cx="126" cy="86" rx="34" ry="30" fill="url(#furSilver)" stroke="#8ea6c2" stroke-width="1.3"/>
-              <ellipse cx="126" cy="98" rx="16" ry="11" fill="#dce7f4"/>
-              <!-- amber eyes -->
-              <ellipse cx="112" cy="84" rx="5.4" ry="6" fill="#1a2740"/>
-              <ellipse cx="140" cy="84" rx="5.4" ry="6" fill="#1a2740"/>
-              <ellipse cx="112" cy="84.5" rx="3.2" ry="3.6" fill="#f0b429"/>
-              <ellipse cx="140" cy="84.5" rx="3.2" ry="3.6" fill="#f0b429"/>
-              <circle cx="113.2" cy="83" r="1.2" fill="#fff6c8"/>
-              <circle cx="141.2" cy="83" r="1.2" fill="#fff6c8"/>
-              <ellipse cx="126" cy="96" rx="4.2" ry="2.6" fill="#7a8eaa"/>
-              <path d="M126 98.5v6" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M126 104.5c-7 4-14 4-19 1.5" fill="none" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M126 104.5c7 4 14 4 19 1.5" fill="none" stroke="#5d7394" stroke-width="1.5" stroke-linecap="round"/>
-              <!-- front paws suggestion -->
-              <ellipse cx="112" cy="160" rx="9" ry="6" fill="#eef4fb" stroke="#8ea6c2" stroke-width="1"/>
-              <ellipse cx="140" cy="160" rx="9" ry="6" fill="#eef4fb" stroke="#8ea6c2" stroke-width="1"/>
+              <!-- sitting body -->
+              <ellipse cx="130" cy="150" rx="34" ry="30" fill="url(#furWhite)" stroke="#b7c9de" stroke-width="1.2"/>
+              <ellipse cx="130" cy="158" rx="20" ry="14" fill="#f4f8fd"/>
+              <!-- paws -->
+              <ellipse cx="116" cy="172" rx="10" ry="7" fill="#fff" stroke="#b7c9de" stroke-width="1"/>
+              <ellipse cx="144" cy="172" rx="10" ry="7" fill="#fff" stroke="#b7c9de" stroke-width="1"/>
+              <!-- big chibi head -->
+              <path d="M98 78l-14-24 28 12z" fill="url(#furWhite)" stroke="#b7c9de" stroke-width="1.1"/>
+              <path d="M162 78l14-24-28 12z" fill="url(#furWhite)" stroke="#b7c9de" stroke-width="1.1"/>
+              <path d="M100 74l-8-12 15 8z" fill="#f7b6c2"/>
+              <path d="M160 74l8-12-15 8z" fill="#f7b6c2"/>
+              <circle cx="130" cy="96" r="38" fill="url(#furWhite)" stroke="#b7c9de" stroke-width="1.2"/>
+              <!-- large amber eyes -->
+              <ellipse cx="114" cy="96" rx="8" ry="9" fill="#1a2740"/>
+              <ellipse cx="146" cy="96" rx="8" ry="9" fill="#1a2740"/>
+              <ellipse cx="114" cy="97" rx="5" ry="5.6" fill="#f0b429"/>
+              <ellipse cx="146" cy="97" rx="5" ry="5.6" fill="#f0b429"/>
+              <circle cx="116" cy="94.5" r="1.8" fill="#fff6c8"/>
+              <circle cx="148" cy="94.5" r="1.8" fill="#fff6c8"/>
+              <circle cx="112.2" cy="99.5" r="0.8" fill="#fff" opacity="0.8"/>
+              <circle cx="144.2" cy="99.5" r="0.8" fill="#fff" opacity="0.8"/>
+              <!-- soft cheeks + smile -->
+              <ellipse cx="104" cy="108" rx="5" ry="3" fill="#f7b6c2" opacity="0.55"/>
+              <ellipse cx="156" cy="108" rx="5" ry="3" fill="#f7b6c2" opacity="0.55"/>
+              <ellipse cx="130" cy="108" rx="3.2" ry="2.2" fill="#f3a0b0"/>
+              <path d="M122 114c4 5 12 5 16 0" fill="none" stroke="#c07a8a" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
           </div>
           <div class="hero-copy">
-            <p class="eyebrow">銀白九尾 · 守護你的休息時間</p>
+            <p class="eyebrow">小小九尾 · 陪你存休息時間</p>
             <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘</small></p>
-            <p class="hint" id="homeHint">康軒成績好，狐火就更亮</p>
+            <p class="hint" id="homeHint">康軒成績好，狐火與花瓣一起亮</p>
           </div>
         </div>
         <div class="action-row">

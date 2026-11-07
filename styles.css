@@ -174,9 +174,10 @@ h3.list-title {
 
 .hero-panel {
   background:
-    radial-gradient(circle at 82% 18%, rgba(255, 248, 220, 0.35), transparent 28%),
-    radial-gradient(circle at 18% 78%, rgba(240, 180, 41, 0.22), transparent 32%),
-    linear-gradient(155deg, #1a3358 0%, #16304f 40%, #1f4a5c 78%, #244a3f 100%);
+    radial-gradient(circle at 84% 16%, rgba(255, 248, 220, 0.42), transparent 26%),
+    radial-gradient(circle at 14% 82%, rgba(240, 180, 41, 0.28), transparent 34%),
+    radial-gradient(circle at 70% 70%, rgba(247, 182, 194, 0.12), transparent 35%),
+    linear-gradient(155deg, #243b63 0%, #1d3858 38%, #2a5570 72%, #355f6a 100%);
   color: #f7fbff;
   border-radius: var(--radius);
   padding: 18px 18px 20px;
@@ -187,8 +188,8 @@ h3.list-title {
   align-items: center;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 12px 28px rgba(20, 40, 72, 0.3);
-  border: 1px solid rgba(240, 180, 41, 0.28);
+  box-shadow: 0 12px 28px rgba(20, 40, 72, 0.28);
+  border: 1px solid rgba(240, 180, 41, 0.3);
 }
 
 .hero-sky {
@@ -222,6 +223,31 @@ h3.list-title {
 .foxfire.f2 { left: 28%; top: 68%; width: 8px; height: 8px; animation-delay: 0.8s; }
 .foxfire.f3 { right: 38%; top: 30%; width: 7px; height: 7px; animation-delay: 1.4s; }
 
+.blossom {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, #f7d6de 70%);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+  opacity: 0.85;
+}
+
+.blossom::before,
+.blossom::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.blossom::before { transform: translate(7px, -2px) scale(0.75); }
+.blossom::after { transform: translate(-5px, 4px) scale(0.65); }
+
+.blossom.b1 { left: 16%; top: 14%; }
+.blossom.b2 { left: 8%; top: 42%; width: 9px; height: 9px; opacity: 0.7; }
+
 .lantern-glow {
   position: absolute;
   left: 10%;
@@ -229,7 +255,7 @@ h3.list-title {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(240, 180, 41, 0.45), transparent 70%);
+  background: radial-gradient(circle, rgba(240, 180, 41, 0.5), transparent 70%);
 }
 
 @keyframes float-fire {
@@ -252,7 +278,7 @@ h3.list-title {
 }
 
 .tails {
-  transform-origin: 130px 150px;
+  transform-origin: 130px 140px;
   animation: wag 2.8s ease-in-out infinite;
 }
 
