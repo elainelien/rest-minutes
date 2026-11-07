@@ -49,6 +49,18 @@
           <p class="day-cap-line" id="dayCapLine">今日一般上限 60 分</p>
           <p class="overtime-line" id="overtimeLine" hidden></p>
         </div>
+        <div class="panel stats-panel">
+          <div class="panel-head">
+            <h3>今日統計</h3>
+            <span class="mini-seal">統</span>
+          </div>
+          <label class="stats-day-label">
+            查看日期
+            <select id="statsDaySelect" aria-label="選擇統計日期"></select>
+          </label>
+          <div class="stats-scores" id="statsScores"></div>
+          <div class="stats-rest" id="statsRest"></div>
+        </div>
         <div class="quick-rules">
           <p class="rules-title">換算小訣</p>
           <p>85 起 1 點 · 每滿多 5 分再＋1 · 1 點＝5 分鐘</p>
@@ -179,6 +191,13 @@
           </span>
           <input type="checkbox" id="allowOvertimeToggle" checked />
         </label>
+        <label class="setting-toggle">
+          <span>
+            <strong>休息結束音效</strong>
+            <small>關＝靜音；時間到仍會跳出提示並盡量震動</small>
+          </span>
+          <input type="checkbox" id="endSoundToggle" checked />
+        </label>
         <button type="button" class="btn secondary block" id="resetBtn">清除本機紀錄（重新開始）</button>
       </section>
     </main>
@@ -191,6 +210,18 @@
       <button type="button" class="tab" data-go="settings"><span class="tab-seal">印</span>設定</button>
     </nav>
   </div>
+
+  <div class="end-alert" id="endAlert" hidden role="dialog" aria-modal="true" aria-labelledby="endAlertTitle">
+    <div class="end-alert-backdrop" id="endAlertBackdrop"></div>
+    <div class="end-alert-card">
+      <span class="mini-seal gold" aria-hidden="true">月</span>
+      <h2 id="endAlertTitle">休息時間到</h2>
+      <p class="end-alert-body" id="endAlertBody">月亮走完這一圈了，回來看看錢包吧。</p>
+      <p class="end-alert-meta" id="endAlertMeta"></p>
+      <button type="button" class="btn primary block" id="endAlertAck">知道了<small>關掉提示</small></button>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
