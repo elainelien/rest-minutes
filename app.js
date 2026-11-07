@@ -12,7 +12,9 @@
     day: todayKey(),
     regularBySubject: Object.fromEntries(SUBJECTS.map((s) => [s, 0])),
     todayRegular: 0,
+    todayOvertime: 0,
     todayBonus: 0,
+    allowOvertimeEarn: true,
     ledger: [],
   });
 
@@ -29,6 +31,7 @@
     intervalId: null,
   };
   let finishing = false;
+  let audioCtx = null;
 
   function todayKey() {
     const d = new Date();
@@ -88,6 +91,7 @@
     state.day = key;
     state.regularBySubject = Object.fromEntries(SUBJECTS.map((s) => [s, 0]));
     state.todayRegular = 0;
+    state.todayOvertime = 0;
     state.todayBonus = 0;
     // balance carries over
     save();
@@ -102,18 +106,22 @@
 
   function computeAward(subject, score) {
     const points = scoreToPoints(score);
-    let regularWanted = points * POINT_MINUTES;
+    const regularWanted = points * POINT_MINUTES;
     const subjectLeft = Math.max(0, SUBJECT_CAP - (state.regularBySubject[subject] || 0));
     const dayLeft = Math.max(0, DAY_CAP - state.todayRegular);
     const regularGranted = Math.min(regularWanted, subjectLeft, dayLeft);
+    const overtimeWanted = Math.max(0, regularWanted - regularGranted);
+    const overtimeGranted = state.allowOvertimeEarn !== false ? overtimeWanted : 0;
     const bonus = Number(score) === 100 ? PERFECT_BONUS : 0;
     return {
       points,
       regularWanted,
       regularGranted,
+      overtimeGranted,
       bonus,
-      total: regularGranted + bonus,
-      capped: regularGranted < regularWanted,
+      total: regularGranted + overtimeGranted + bonus,
+      hardCapped: overtimeWanted > 0 && overtimeGranted === 0,
+      softOvertime: overtimeGranted > 0,
     };
   }
 
@@ -167,6 +175,54 @@
   function startTickInterval() {
     clearTickInterval();
     timer.intervalId = setInterval(syncFromWallClock, 250);
+  }
+
+  function ensureAudio() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
+    return audioCtx;
+  }
+
+  function unlockAudio() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    // Tiny silent blip so mobile browsers unlock audio on this user gesture.
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.0001;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.01);
+    } catch {
+      // ignore unlock failures
+    }
+  }
+
+  function playTimeUpChime() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t0 = now + i * 0.14;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.34);
+    });
   }
 
   function maybeRequestNotification() {
@@ -223,6 +279,41 @@
     render();
   }
 
+  function todayEarnedTotal() {
+    return state.todayRegular + (state.todayOvertime || 0) + state.todayBonus;
+  }
+
+  function updateCapCopy() {
+    const overtimeOn = state.allowOvertimeEarn !== false;
+    const ot = state.todayOvertime || 0;
+    const showOt = overtimeOn && (ot > 0 || todayEarnedTotal() > DAY_CAP);
+
+    document.getElementById("dayCapLine").textContent = overtimeOn
+      ? `今日一般上限 ${DAY_CAP} 分（可開超時繼續賺）`
+      : `今日一般上限 ${DAY_CAP} 分（已關超時，一般最多 ${DAY_CAP}）`;
+
+    const homeOt = document.getElementById("overtimeLine");
+    const walletOt = document.getElementById("walletOvertimeLine");
+    if (showOt) {
+      const text = `含超時已賺 ${todayEarnedTotal()} 分（一般 ${state.todayRegular}＋超時 ${ot}＋加碼 ${state.todayBonus}）· 剩餘可用 ${state.balance} 分`;
+      homeOt.hidden = false;
+      walletOt.hidden = false;
+      homeOt.textContent = text;
+      walletOt.textContent = text;
+    } else {
+      homeOt.hidden = true;
+      walletOt.hidden = true;
+    }
+
+    document.getElementById("walletDayCapLine").textContent = `今日一般上限 ${DAY_CAP} 分`;
+    document.getElementById("walletHint").textContent = overtimeOn
+      ? "一般換算每科上限 20、全日一般池 60；超過部分可當超時繼續賺，當天就能倒數用。100 加碼可一直累加。"
+      : "一般換算每科上限 20、全日一般硬上限 60（超時已關閉）；100 加碼可一直累加。";
+
+    const toggle = document.getElementById("allowOvertimeToggle");
+    if (toggle) toggle.checked = overtimeOn;
+  }
+
   function render() {
     rollDayIfNeeded();
     document.getElementById("balanceMinutes").textContent = state.balance;
@@ -231,12 +322,13 @@
     document.getElementById("walletTodayRegular").textContent = state.todayRegular;
     document.getElementById("walletTodayBonus").textContent = state.todayBonus;
     document.getElementById("timerAvail").textContent = state.balance;
+    updateCapCopy();
 
     const hint = document.getElementById("homeHint");
     hint.textContent =
       state.balance > 0
         ? "可以按「開始休息」，用計時表倒數使用"
-        : "記康軒成績來賺休息時間";
+        : "記康軒成績，讓銀白狐火更亮";
 
     const caps = document.getElementById("subjectCaps");
     caps.innerHTML = SUBJECTS.map((s) => {
@@ -247,7 +339,7 @@
 
     const ledger = document.getElementById("ledger");
     if (!state.ledger.length) {
-      ledger.innerHTML = `<li><div>還沒有紀錄<div class="meta">先去記一筆康軒成績吧</div></div></li>`;
+      ledger.innerHTML = `<li><div>尚無紀錄<div class="meta">銀白九尾靜候第一筆康軒成績</div></div></li>`;
     } else {
       ledger.innerHTML = state.ledger
         .map((item) => {
@@ -286,8 +378,10 @@
       return;
     }
     let text = `${score} 分 → ${award.points} 點 → 一般 ${award.regularGranted} 分`;
-    if (award.capped) {
-      text += `（原 ${award.regularWanted}，已套用每科／全日上限）`;
+    if (award.softOvertime) {
+      text += `，超時 +${award.overtimeGranted} 分`;
+    } else if (award.hardCapped) {
+      text += `（原 ${award.regularWanted}，已套用每科／全日硬上限）`;
     }
     if (award.bonus) {
       text += `，滿分加碼 +${award.bonus} 分`;
@@ -320,6 +414,7 @@
     state.regularBySubject[selectedSubject] =
       (state.regularBySubject[selectedSubject] || 0) + award.regularGranted;
     state.todayRegular += award.regularGranted;
+    state.todayOvertime = (state.todayOvertime || 0) + award.overtimeGranted;
     state.todayBonus += award.bonus;
     state.balance += award.total;
     addLedger({
@@ -327,8 +422,9 @@
       detail: [
         unit || "康軒刷題",
         `${award.points} 點`,
+        award.overtimeGranted ? `超時＋${award.overtimeGranted}` : null,
         award.bonus ? `滿分＋${award.bonus}` : null,
-        award.capped ? "已套用上限" : null,
+        award.hardCapped ? "已套用硬上限" : null,
       ]
         .filter(Boolean)
         .join(" · "),
@@ -341,6 +437,11 @@
     render();
     if (award.total === 0) {
       showToast("logToast", "已記錄，但這次是 0 分休息（未達 85 或已達上限）", true);
+    } else if (award.softOvertime) {
+      showToast(
+        "logToast",
+        `已入帳 +${award.total} 分鐘（含超時 ${award.overtimeGranted}）！目前剩餘 ${state.balance} 分`
+      );
     } else {
       showToast("logToast", `已入帳 +${award.total} 分鐘！目前剩餘 ${state.balance} 分`);
     }
@@ -348,6 +449,7 @@
 
   function startTimer() {
     rollDayIfNeeded();
+    unlockAudio();
     if (timer.running || timer.paused) {
       showToast("timerToast", "休息計時進行中", true);
       return;
@@ -379,6 +481,7 @@
   }
 
   function pauseTimer() {
+    unlockAudio();
     if (timer.paused) {
       timer.endAt = Date.now() + timer.remainingMs;
       timer.running = true;
@@ -437,8 +540,11 @@
       "timerToast",
       completed ? `休息時間到！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
     );
-    if (completed && wasHidden) {
-      notifyRestEnded();
+    if (completed) {
+      playTimeUpChime();
+      if (wasHidden || (typeof Notification !== "undefined" && Notification.permission === "granted")) {
+        notifyRestEnded();
+      }
     }
     finishing = false;
   }
@@ -499,6 +605,12 @@
   document.getElementById("startTimerBtn").addEventListener("click", startTimer);
   document.getElementById("pauseTimerBtn").addEventListener("click", pauseTimer);
   document.getElementById("stopTimerBtn").addEventListener("click", () => finishTimer(false));
+  document.getElementById("allowOvertimeToggle").addEventListener("change", (event) => {
+    state.allowOvertimeEarn = Boolean(event.target.checked);
+    save();
+    updatePreview();
+    render();
+  });
   document.getElementById("resetBtn").addEventListener("click", () => {
     if (!confirm("確定清除本機所有點數與紀錄？")) return;
     clearTickInterval();
@@ -512,7 +624,9 @@
       intervalId: null,
     };
     clearPersistedTimer();
+    const keepOvertime = state.allowOvertimeEarn !== false;
     state = defaultState();
+    state.allowOvertimeEarn = keepOvertime;
     save();
     showTimerSetupUi();
     render();
