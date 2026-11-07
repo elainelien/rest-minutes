@@ -328,7 +328,7 @@
     hint.textContent =
       state.balance > 0
         ? "可以按「開始休息」，用計時表倒數使用"
-        : "記康軒成績，為水墨九尾添一筆";
+        : "記康軒成績，讓小狐狸尾巴更亮";
 
     const caps = document.getElementById("subjectCaps");
     caps.innerHTML = SUBJECTS.map((s) => {
@@ -339,7 +339,7 @@
 
     const ledger = document.getElementById("ledger");
     if (!state.ledger.length) {
-      ledger.innerHTML = `<li><div>尚無紀錄<div class="meta">水墨九尾靜候第一筆康軒成績</div></div></li>`;
+      ledger.innerHTML = `<li><div>尚無紀錄<div class="meta">小狐狸靜候第一筆康軒成績</div></div></li>`;
     } else {
       ledger.innerHTML = state.ledger
         .map((item) => {

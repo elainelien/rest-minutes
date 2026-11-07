@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="bg-decor" aria-hidden="true"></div>
+  <div class="bg-mist" aria-hidden="true"></div>
   <div class="app" id="app">
     <header class="top">
       <div class="brand-block">
@@ -19,19 +19,22 @@
       </div>
       <div class="balance-chip" title="剩餘可休息">
         <span class="chip-fox" aria-hidden="true">
-          <svg viewBox="0 0 40 40" width="22" height="22">
-            <path d="M11 16l-6-10 11 6z" fill="#f7f3ea" stroke="#1c1c1c" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M29 16l6-10-11 6z" fill="#f7f3ea" stroke="#1c1c1c" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M12.5 15l-3-5 6 3.5z" fill="#c45c4a" opacity="0.55"/>
-            <path d="M27.5 15l3-5-6 3.5z" fill="#c45c4a" opacity="0.55"/>
-            <circle cx="20" cy="22" r="9.2" fill="#f7f3ea" stroke="#1c1c1c" stroke-width="1.3"/>
-            <ellipse cx="16.2" cy="21.4" rx="2" ry="2.3" fill="#1c1c1c"/>
-            <ellipse cx="23.8" cy="21.4" rx="2" ry="2.3" fill="#1c1c1c"/>
-            <ellipse cx="16.2" cy="21.6" rx="1.1" ry="1.3" fill="#c9a227"/>
-            <ellipse cx="23.8" cy="21.6" rx="1.1" ry="1.3" fill="#c9a227"/>
-            <ellipse cx="20" cy="24.8" rx="1.2" ry="0.85" fill="#8a8a8a"/>
-            <path d="M16 25c1.3 1.2 2.6 1.1 3-.2" fill="none" stroke="#b07a72" stroke-width="1" stroke-linecap="round"/>
-            <path d="M21 25c1.3 1.2 2.6 1.1 3-.2" fill="none" stroke="#b07a72" stroke-width="1" stroke-linecap="round"/>
+          <svg viewBox="0 0 48 48" width="24" height="24">
+            <!-- ears -->
+            <path d="M12 20L6 4l14 10z" fill="#f7fbff" stroke="#5b6d86" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M36 20L42 4l-14 10z" fill="#f7fbff" stroke="#5b6d86" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M12 18L8 8l10 7z" fill="#f5a8b8"/>
+            <path d="M36 18L40 8l-10 7z" fill="#f5a8b8"/>
+            <!-- head + muzzle -->
+            <ellipse cx="24" cy="26" rx="13" ry="12" fill="#f7fbff" stroke="#5b6d86" stroke-width="1.2"/>
+            <path d="M16 28c2 6 14 6 16 0-3 5-13 5-16 0z" fill="#e8eef7"/>
+            <path d="M24 27l-5 7h10z" fill="#f7fbff" stroke="#5b6d86" stroke-width="1" stroke-linejoin="round"/>
+            <ellipse cx="24" cy="33.5" rx="2" ry="1.4" fill="#ef8aa0"/>
+            <!-- eyes -->
+            <ellipse cx="18.5" cy="24" rx="2.4" ry="2.8" fill="#1f2a3a"/>
+            <ellipse cx="29.5" cy="24" rx="2.4" ry="2.8" fill="#1f2a3a"/>
+            <ellipse cx="18.5" cy="24.3" rx="1.3" ry="1.5" fill="#f0b429"/>
+            <ellipse cx="29.5" cy="24.3" rx="1.3" ry="1.5" fill="#f0b429"/>
           </svg>
         </span>
         <span class="balance-num" id="balanceMinutes">0</span>
@@ -43,78 +46,106 @@
       <!-- 首頁 -->
       <section class="screen active" data-screen="home">
         <div class="hero-panel">
-          <div class="hero-sky" aria-hidden="true">
-            <svg class="ink-scape" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice">
-              <defs>
-                <linearGradient id="mistWash" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#dfe7ef" stop-opacity="0.15"/>
-                  <stop offset="100%" stop-color="#8a9aab" stop-opacity="0.35"/>
-                </linearGradient>
-              </defs>
-              <circle cx="268" cy="36" r="22" fill="#f4f0e4" opacity="0.85"/>
-              <circle cx="268" cy="36" r="22" fill="none" stroke="#2a2a2a" stroke-width="1.2" opacity="0.35"/>
-              <path d="M0 118c28-22 54-34 86-30 30 4 48 22 78 18 26-4 44-22 72-18 24 4 42 20 64 14v78H0z" fill="url(#mistWash)"/>
-              <path d="M20 130c22-26 48-40 78-36 24 4 40 20 62 16 28-4 46-24 74-18 18 4 34 16 50 12" fill="none" stroke="#2a2a2a" stroke-width="2.2" stroke-linecap="round" opacity="0.45"/>
-              <path d="M40 148c18-14 40-22 62-18" fill="none" stroke="#2a2a2a" stroke-width="1.4" opacity="0.28"/>
-              <circle cx="42" cy="150" r="5" fill="#c45c4a" opacity="0.55"/>
-              <circle cx="58" cy="146" r="3.5" fill="#c45c4a" opacity="0.35"/>
-            </svg>
-            <span class="seal-mark" aria-hidden="true">息</span>
+          <div class="hero-decor" aria-hidden="true">
+            <span class="moon"></span>
+            <span class="wisp w1"></span>
+            <span class="wisp w2"></span>
+            <span class="lantern"></span>
+            <span class="seal">息</span>
           </div>
-          <div class="fox-mascot" aria-hidden="true">
-            <svg class="fox-svg" viewBox="0 0 260 220" width="190" height="160">
+
+          <div class="fox-hero" aria-hidden="true">
+            <svg class="fox-svg" viewBox="0 0 320 280" width="280" height="245">
               <defs>
-                <radialGradient id="inkWashSoft" cx="50%" cy="40%" r="60%">
+                <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#ffffff"/>
-                  <stop offset="70%" stop-color="#f3efe6"/>
-                  <stop offset="100%" stop-color="#d9d2c4"/>
-                </radialGradient>
-                <linearGradient id="inkRock" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#9a9a9a"/>
-                  <stop offset="100%" stop-color="#4a4a4a"/>
+                  <stop offset="100%" stop-color="#e6eef8"/>
+                </linearGradient>
+                <linearGradient id="tail" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#ffffff"/>
+                  <stop offset="100%" stop-color="#cfdced"/>
                 </linearGradient>
               </defs>
-              <ellipse cx="130" cy="190" rx="56" ry="12" fill="#2a2a2a" opacity="0.12"/>
-              <path d="M80 176c8-16 26-26 50-26s42 10 50 26c-12 8-32 14-50 14s-38-6-50-14z" fill="url(#inkRock)" opacity="0.7"/>
-              <path d="M84 172c10-12 28-18 46-16" fill="none" stroke="#1c1c1c" stroke-width="1.4" opacity="0.45"/>
+
+              <!-- soft rock -->
+              <ellipse cx="160" cy="248" rx="78" ry="16" fill="#2a3a52" opacity="0.22"/>
+              <path d="M95 232c12-20 36-32 65-32s53 12 65 32c-16 12-42 18-65 18s-49-6-65-18z" fill="#6f849c"/>
+              <path d="M108 226c14-10 34-14 52-10" fill="none" stroke="#4d627a" stroke-width="2" stroke-linecap="round"/>
+              <ellipse cx="140" cy="220" rx="8" ry="3.5" fill="#8fbf8a"/>
+              <ellipse cx="176" cy="224" rx="6" ry="2.8" fill="#8fbf8a" opacity="0.85"/>
+
+              <!-- nine distinct bushy tails -->
               <g class="tails">
-                <ellipse cx="78" cy="128" rx="15" ry="40" transform="rotate(-70 78 128)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6" stroke-linejoin="round"/>
-                <ellipse cx="88" cy="118" rx="14" ry="42" transform="rotate(-50 88 118)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
-                <ellipse cx="102" cy="110" rx="14" ry="44" transform="rotate(-30 102 110)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
-                <ellipse cx="118" cy="106" rx="13" ry="46" transform="rotate(-12 118 106)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
-                <ellipse cx="134" cy="104" rx="13" ry="46" transform="rotate(8 134 104)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
-                <ellipse cx="150" cy="108" rx="14" ry="44" transform="rotate(26 150 108)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
-                <ellipse cx="164" cy="116" rx="14" ry="42" transform="rotate(46 164 116)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
-                <ellipse cx="174" cy="128" rx="15" ry="40" transform="rotate(64 174 128)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
-                <ellipse cx="180" cy="142" rx="14" ry="36" transform="rotate(78 180 142)" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6"/>
+                <path d="M118 170c-28-8-48-36-46-62 18 10 34 34 46 56z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M126 164c-22-18-30-48-20-72 12 16 22 42 20 66z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M136 160c-12-24-10-56 8-78 4 22 4 50-8 72z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M148 158c-2-26 10-56 30-74-4 24-12 50-30 68z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M160 156c8-26 28-52 52-66-12 22-28 46-52 60z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M172 158c16-22 42-42 68-48-18 18-40 36-68 48z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M182 164c24-16 54-26 78-22-22 12-48 24-78 28z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M188 172c28-8 56-6 78 8-24 2-50 2-78-2z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M190 182c28 2 52 16 66 36-22-8-44-18-66-30z" fill="url(#tail)" stroke="#7f93ad" stroke-width="1.5" stroke-linejoin="round"/>
               </g>
-              <ellipse cx="130" cy="150" rx="33" ry="29" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.8"/>
-              <ellipse cx="130" cy="158" rx="18" ry="12" fill="#ebe6db" opacity="0.9"/>
-              <ellipse cx="116" cy="172" rx="9" ry="6" fill="#f7f3ea" stroke="#1c1c1c" stroke-width="1.3"/>
-              <ellipse cx="144" cy="172" rx="9" ry="6" fill="#f7f3ea" stroke="#1c1c1c" stroke-width="1.3"/>
-              <path d="M98 78l-13-22 26 11z" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6" stroke-linejoin="round"/>
-              <path d="M162 78l13-22-26 11z" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.6" stroke-linejoin="round"/>
-              <path d="M100 74l-7-11 14 7z" fill="#c45c4a" opacity="0.45"/>
-              <path d="M160 74l7-11-14 7z" fill="#c45c4a" opacity="0.45"/>
-              <circle cx="130" cy="96" r="36" fill="url(#inkWashSoft)" stroke="#1c1c1c" stroke-width="1.9"/>
-              <ellipse cx="114" cy="96" rx="7.5" ry="8.5" fill="#1c1c1c"/>
-              <ellipse cx="146" cy="96" rx="7.5" ry="8.5" fill="#1c1c1c"/>
-              <ellipse cx="114" cy="97" rx="4.4" ry="5" fill="#c9a227"/>
-              <ellipse cx="146" cy="97" rx="4.4" ry="5" fill="#c9a227"/>
-              <circle cx="115.6" cy="94.8" r="1.5" fill="#f7f3ea"/>
-              <circle cx="147.6" cy="94.8" r="1.5" fill="#f7f3ea"/>
-              <ellipse cx="104" cy="108" rx="4.5" ry="2.6" fill="#c45c4a" opacity="0.28"/>
-              <ellipse cx="156" cy="108" rx="4.5" ry="2.6" fill="#c45c4a" opacity="0.28"/>
-              <ellipse cx="130" cy="108" rx="2.8" ry="1.9" fill="#5a5a5a"/>
-              <path d="M122 114c4 4.5 12 4.5 16 0" fill="none" stroke="#1c1c1c" stroke-width="1.7" stroke-linecap="round"/>
+
+              <!-- sitting fox body -->
+              <ellipse cx="150" cy="196" rx="38" ry="30" fill="url(#fur)" stroke="#7f93ad" stroke-width="1.6"/>
+              <ellipse cx="150" cy="204" rx="22" ry="15" fill="#eef3fa"/>
+              <!-- hind haunch -->
+              <ellipse cx="178" cy="204" rx="16" ry="18" fill="url(#fur)" stroke="#7f93ad" stroke-width="1.3"/>
+              <!-- front paws -->
+              <ellipse cx="132" cy="220" rx="12" ry="8" fill="#f7fbff" stroke="#7f93ad" stroke-width="1.3"/>
+              <ellipse cx="160" cy="220" rx="12" ry="8" fill="#f7fbff" stroke="#7f93ad" stroke-width="1.3"/>
+              <path d="M126 220h12M154 220h12" stroke="#b7c4d6" stroke-width="1.2" stroke-linecap="round"/>
+
+              <!-- neck / cheek fluff -->
+              <ellipse cx="150" cy="150" rx="34" ry="18" fill="#f7fbff"/>
+              <ellipse cx="118" cy="148" rx="12" ry="10" fill="#f7fbff" stroke="#7f93ad" stroke-width="1"/>
+              <ellipse cx="182" cy="148" rx="12" ry="10" fill="#f7fbff" stroke="#7f93ad" stroke-width="1"/>
+
+              <!-- triangular ears -->
+              <path d="M112 118L96 58l42 36z" fill="url(#fur)" stroke="#5b6d86" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M188 118L204 58l-42 36z" fill="url(#fur)" stroke="#5b6d86" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M114 112L104 72l28 26z" fill="#f5a8b8"/>
+              <path d="M186 112L196 72l-28 26z" fill="#f5a8b8"/>
+
+              <!-- head (slightly pointed toward muzzle) -->
+              <ellipse cx="150" cy="128" rx="42" ry="36" fill="url(#fur)" stroke="#5b6d86" stroke-width="1.8"/>
+
+              <!-- fluffy cheeks -->
+              <ellipse cx="112" cy="138" rx="14" ry="11" fill="#f7fbff" stroke="#7f93ad" stroke-width="1.1"/>
+              <ellipse cx="188" cy="138" rx="14" ry="11" fill="#f7fbff" stroke="#7f93ad" stroke-width="1.1"/>
+              <path d="M102 136c4 2 8 2 12 0M186 136c4 2 8 2 12 0" fill="none" stroke="#c5d0e0" stroke-width="1.2" stroke-linecap="round"/>
+
+              <!-- tapered fox muzzle -->
+              <path d="M132 138c6 18 30 18 36 0-8 14-28 14-36 0z" fill="#eef3fa"/>
+              <path d="M150 136 L132 162 L168 162 Z" fill="url(#fur)" stroke="#5b6d86" stroke-width="1.5" stroke-linejoin="round"/>
+              <ellipse cx="150" cy="158" rx="5" ry="3.4" fill="#ef8aa0"/>
+              <path d="M150 161v7" stroke="#5b6d86" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M150 168c-8 5-16 4-22 0" fill="none" stroke="#5b6d86" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M150 168c8 5 16 4 22 0" fill="none" stroke="#5b6d86" stroke-width="1.6" stroke-linecap="round"/>
+
+              <!-- fox-shaped amber eyes -->
+              <path d="M122 124c6-4 14-3 18 2-5 5-13 6-20 2 1-2 1-3 2-4z" fill="#1f2a3a"/>
+              <path d="M160 126c6-5 14-6 20-2-1 1-1 2-2 4-7 4-15 3-20-2z" fill="#1f2a3a"/>
+              <ellipse cx="132" cy="126" rx="5.2" ry="5.8" fill="#f0b429"/>
+              <ellipse cx="168" cy="126" rx="5.2" ry="5.8" fill="#f0b429"/>
+              <circle cx="133.6" cy="124.2" r="1.7" fill="#fff6c8"/>
+              <circle cx="169.6" cy="124.2" r="1.7" fill="#fff6c8"/>
+
+              <!-- soft blush + smile -->
+              <ellipse cx="116" cy="146" rx="6" ry="3.2" fill="#f5a8b8" opacity="0.45"/>
+              <ellipse cx="184" cy="146" rx="6" ry="3.2" fill="#f5a8b8" opacity="0.45"/>
+              <path d="M142 174c5 5 11 5 16 0" fill="none" stroke="#c57b8a" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </div>
+
           <div class="hero-copy">
-            <p class="eyebrow">水墨九尾 · 陪你存休息時間</p>
+            <p class="eyebrow">九尾小狐狸 · 幫你存休息時間</p>
             <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘</small></p>
-            <p class="hint" id="homeHint">康軒成績好，墨色狐狸也點頭</p>
+            <p class="hint" id="homeHint">康軒成績好，狐狸尾巴就更亮</p>
           </div>
         </div>
+
         <div class="action-row">
           <button type="button" class="btn primary" data-go="log">記成績</button>
           <button type="button" class="btn secondary" data-go="timer">開始休息</button>
