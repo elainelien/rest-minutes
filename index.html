@@ -6,7 +6,7 @@
   <title>煦煦休息時間</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -20,12 +20,18 @@
       <div class="balance-chip" title="剩餘可休息">
         <span class="chip-fox" aria-hidden="true">
           <svg viewBox="0 0 40 40" width="22" height="22">
-            <ellipse cx="20" cy="24" rx="11" ry="9" fill="#fff6eb"/>
-            <path d="M10 18l-6-8 9 5zm20 0l6-8-9 5z" fill="#ff9f68"/>
-            <circle cx="20" cy="22" r="8.5" fill="#ff9f68"/>
-            <circle cx="17" cy="21" r="1.3" fill="#4a2f24"/>
-            <circle cx="23" cy="21" r="1.3" fill="#4a2f24"/>
-            <ellipse cx="20" cy="24.5" rx="2" ry="1.3" fill="#ff7a45"/>
+            <path d="M10 17l-7-11 11 6z" fill="#8b1e1a"/>
+            <path d="M30 17l7-11-11 6z" fill="#8b1e1a"/>
+            <path d="M12 16l-4-6 7 4z" fill="#d4a84b"/>
+            <path d="M28 16l4-6-7 4z" fill="#d4a84b"/>
+            <circle cx="20" cy="22" r="9" fill="#c23b2e"/>
+            <ellipse cx="20" cy="25" rx="5" ry="3.5" fill="#f3e6d0"/>
+            <path d="M15.2 20.5l2.2 1.1M24.8 20.5l-2.2 1.1" stroke="#1c2430" stroke-width="1.2" stroke-linecap="round"/>
+            <circle cx="16.5" cy="21.2" r="1.35" fill="#1c2430"/>
+            <circle cx="23.5" cy="21.2" r="1.35" fill="#1c2430"/>
+            <circle cx="16.9" cy="20.8" r="0.45" fill="#f7e7a1"/>
+            <circle cx="23.9" cy="20.8" r="0.45" fill="#f7e7a1"/>
+            <ellipse cx="20" cy="24.2" rx="1.6" ry="1.1" fill="#8b1e1a"/>
           </svg>
         </span>
         <span class="balance-num" id="balanceMinutes">0</span>
@@ -38,46 +44,59 @@
       <section class="screen active" data-screen="home">
         <div class="hero-panel">
           <div class="fox-mascot" aria-hidden="true">
-            <svg class="fox-svg" viewBox="0 0 220 180" width="168" height="138">
-              <!-- nine soft tails -->
+            <svg class="fox-svg" viewBox="0 0 240 200" width="176" height="146">
+              <defs>
+                <linearGradient id="tailInk" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#9e2420"/>
+                  <stop offset="55%" stop-color="#c23b2e"/>
+                  <stop offset="100%" stop-color="#d4a84b"/>
+                </linearGradient>
+                <linearGradient id="furCoat" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#d94a3d"/>
+                  <stop offset="100%" stop-color="#8b1e1a"/>
+                </linearGradient>
+              </defs>
+              <!-- nine flowing tails -->
               <g class="tails">
-                <path d="M108 118c-18 8-42 28-48 52 14-6 34-18 48-34z" fill="#ffb07a"/>
-                <path d="M112 116c-8 14-18 40-14 58 10-10 18-28 16-52z" fill="#ff9a5c"/>
-                <path d="M118 114c2 16 10 42 24 54-2-16-8-36-20-52z" fill="#ffb07a"/>
-                <path d="M122 112c12 12 34 34 52 40-14-8-34-24-48-42z" fill="#ff8d4a"/>
-                <path d="M126 110c16 6 42 18 58 14-12-2-36-8-52-18z" fill="#ffb07a"/>
-                <path d="M100 120c-22 2-48 10-58 28 16 0 40-6 56-22z" fill="#ff9a5c"/>
-                <path d="M96 124c-20-6-46-4-60 10 14 4 38 2 56-8z" fill="#ffc08a"/>
-                <path d="M130 108c18-2 44-14 54-30-10 4-34 14-50 26z" fill="#ff9a5c"/>
-                <path d="M134 106c20-8 40-28 42-46-6 10-22 30-40 42z" fill="#ffc08a"/>
+                <path d="M118 128c-28 10-58 36-66 64 18-8 44-28 64-48z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M122 126c-14 16-28 48-22 70 12-12 22-36 20-62z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M128 124c4 18 16 50 34 64-4-18-12-42-28-58z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M132 122c18 14 46 40 68 48-18-10-44-30-62-50z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M136 120c22 8 54 22 74 16-16-2-46-10-66-22z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M112 130c-30 4-62 14-74 36 20 0 50-8 70-28z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M108 134c-26-8-58-4-76 14 18 6 48 2 70-10z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M140 118c24-4 56-18 70-38-14 6-44 20-64 34z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
+                <path d="M144 116c26-10 52-34 56-56-8 14-28 38-50 52z" fill="url(#tailInk)" stroke="#1c2430" stroke-width="1.2"/>
               </g>
               <!-- body -->
-              <ellipse cx="112" cy="128" rx="38" ry="28" fill="#ff9f68"/>
-              <ellipse cx="112" cy="132" rx="22" ry="16" fill="#fff0e4"/>
+              <ellipse cx="120" cy="142" rx="42" ry="30" fill="url(#furCoat)" stroke="#1c2430" stroke-width="1.4"/>
+              <ellipse cx="120" cy="148" rx="24" ry="17" fill="#f3e6d0"/>
               <!-- head -->
-              <circle cx="112" cy="78" r="36" fill="#ff9f68"/>
-              <path d="M82 58l-18-28 34 18z" fill="#ff9f68"/>
-              <path d="M142 58l18-28-34 18z" fill="#ff9f68"/>
-              <path d="M84 54l-10-16 20 12z" fill="#fff0e4"/>
-              <path d="M140 54l10-16-20 12z" fill="#fff0e4"/>
-              <ellipse cx="112" cy="90" rx="16" ry="12" fill="#fff0e4"/>
-              <circle cx="98" cy="74" r="5" fill="#4a2f24"/>
-              <circle cx="126" cy="74" r="5" fill="#4a2f24"/>
-              <circle cx="99.5" cy="72.5" r="1.6" fill="#fff"/>
-              <circle cx="127.5" cy="72.5" r="1.6" fill="#fff"/>
-              <ellipse cx="112" cy="86" rx="5" ry="3.5" fill="#ff6b45"/>
-              <path d="M112 89v6" stroke="#4a2f24" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M112 95c-6 4-12 4-16 2" fill="none" stroke="#4a2f24" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M112 95c6 4 12 4 16 2" fill="none" stroke="#4a2f24" stroke-width="1.5" stroke-linecap="round"/>
-              <!-- cheek blush -->
-              <ellipse cx="90" cy="84" rx="6" ry="3.5" fill="#ff7d6e" opacity="0.45"/>
-              <ellipse cx="134" cy="84" rx="6" ry="3.5" fill="#ff7d6e" opacity="0.45"/>
+              <path d="M78 70l-22-36 40 18z" fill="url(#furCoat)" stroke="#1c2430" stroke-width="1.3"/>
+              <path d="M162 70l22-36-40 18z" fill="url(#furCoat)" stroke="#1c2430" stroke-width="1.3"/>
+              <path d="M80 64l-12-18 22 12z" fill="#d4a84b"/>
+              <path d="M160 64l12-18-22 12z" fill="#d4a84b"/>
+              <ellipse cx="120" cy="88" rx="40" ry="36" fill="url(#furCoat)" stroke="#1c2430" stroke-width="1.4"/>
+              <path d="M96 98c8 18 40 18 48 0-10 8-38 8-48 0z" fill="#f3e6d0"/>
+              <!-- sharper eyes -->
+              <path d="M98 82l12 4" stroke="#1c2430" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M142 82l-12 4" stroke="#1c2430" stroke-width="2.2" stroke-linecap="round"/>
+              <ellipse cx="104" cy="86" rx="5.2" ry="5.8" fill="#1c2430"/>
+              <ellipse cx="136" cy="86" rx="5.2" ry="5.8" fill="#1c2430"/>
+              <circle cx="105.8" cy="84.2" r="1.7" fill="#f7e7a1"/>
+              <circle cx="137.8" cy="84.2" r="1.7" fill="#f7e7a1"/>
+              <!-- mark / brow -->
+              <path d="M120 70c-4 6-4 10 0 14 4-4 4-8 0-14z" fill="#d4a84b" opacity="0.9"/>
+              <ellipse cx="120" cy="96" rx="5" ry="3.2" fill="#8b1e1a"/>
+              <path d="M120 99v7" stroke="#1c2430" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M120 106c-8 5-16 5-22 2" fill="none" stroke="#1c2430" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M120 106c8 5 16 5 22 2" fill="none" stroke="#1c2430" stroke-width="1.6" stroke-linecap="round"/>
             </svg>
           </div>
           <div class="hero-copy">
-            <p class="eyebrow">九尾狐幫你存的休息時間</p>
+            <p class="eyebrow">九尾狐靈 · 為你守護休息時間</p>
             <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘</small></p>
-            <p class="hint" id="homeHint">康軒成績好，狐狸尾巴就更亮亮！</p>
+            <p class="hint" id="homeHint">康軒成績好，九尾更添金光</p>
           </div>
         </div>
         <div class="action-row">
