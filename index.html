@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>煦煦休息時間</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="top">
+      <div>
+        <p class="brand">煦煦休息時間</p>
+        <p class="sub" id="todayLabel">今天 · 國文 → 數學 → 英文</p>
+      </div>
+      <div class="balance-chip" title="剩餘可休息">
+        <span class="balance-num" id="balanceMinutes">0</span>
+        <span class="balance-unit">分</span>
+      </div>
+    </header>
+
+    <main class="screens">
+      <!-- 首頁 -->
+      <section class="screen active" data-screen="home">
+        <div class="hero-panel">
+          <p class="eyebrow">剩餘可休息</p>
+          <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘</small></p>
+          <p class="hint" id="homeHint">記康軒成績來賺休息時間</p>
+        </div>
+        <div class="action-row">
+          <button type="button" class="btn primary" data-go="log">記成績</button>
+          <button type="button" class="btn secondary" data-go="timer">開始休息</button>
+        </div>
+        <div class="subject-caps" id="subjectCaps"></div>
+        <div class="quick-rules">
+          <p>85 起 1 點 · 每滿多 5 分再＋1 · 1 點＝5 分</p>
+          <p>每科一般最多 20 分 · 全日一般 60 分 · 每次 100 另＋5</p>
+        </div>
+      </section>
+
+      <!-- 記成績 -->
+      <section class="screen" data-screen="log">
+        <h2>記康軒成績</h2>
+        <form id="scoreForm" class="form">
+          <label>
+            科目
+            <div class="seg" role="group" aria-label="科目">
+              <button type="button" class="seg-btn active" data-subject="國文">國文</button>
+              <button type="button" class="seg-btn" data-subject="數學">數學</button>
+              <button type="button" class="seg-btn" data-subject="英文">英文</button>
+            </div>
+            <input type="hidden" name="subject" id="subjectInput" value="國文" />
+          </label>
+          <label>
+            分數（0–100）
+            <input type="number" name="score" id="scoreInput" min="0" max="100" inputmode="numeric" placeholder="例如 92" required />
+          </label>
+          <label>
+            單元／冊次（選填）
+            <input type="text" name="unit" id="unitInput" placeholder="例如 第六課" />
+          </label>
+          <p class="preview" id="scorePreview">輸入分數後會顯示可拿幾分鐘</p>
+          <button type="submit" class="btn primary block">送出並入帳</button>
+        </form>
+        <div class="toast" id="logToast" hidden></div>
+      </section>
+
+      <!-- 錢包／紀錄 -->
+      <section class="screen" data-screen="wallet">
+        <h2>休息錢包</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <span class="stat-label">剩餘</span>
+            <span class="stat-value" id="walletBalance">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">今日一般已賺</span>
+            <span class="stat-value" id="walletTodayRegular">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">今日 100 加碼</span>
+            <span class="stat-value" id="walletTodayBonus">0</span>
+          </div>
+        </div>
+        <p class="hint tight">一般換算每科上限 20、全日 60；100 加碼可一直累加。</p>
+        <h3 class="list-title">最近紀錄</h3>
+        <ul class="ledger" id="ledger"></ul>
+      </section>
+
+      <!-- 休息計時 -->
+      <section class="screen" data-screen="timer">
+        <h2>休息計時</h2>
+        <div class="timer-setup" id="timerSetup">
+          <p class="hint">用賺到的時間倒數。剩餘 <strong id="timerAvail">0</strong> 分</p>
+          <label>
+            這次要用幾分鐘
+            <input type="number" id="timerMinutes" min="1" inputmode="numeric" />
+          </label>
+          <label>
+            用途（選填）
+            <div class="seg" id="purposeSeg">
+              <button type="button" class="seg-btn active" data-purpose="電視">電視</button>
+              <button type="button" class="seg-btn" data-purpose="上網">上網</button>
+              <button type="button" class="seg-btn" data-purpose="其他">其他</button>
+            </div>
+          </label>
+          <button type="button" class="btn primary block" id="startTimerBtn">開始倒數</button>
+        </div>
+        <div class="timer-run" id="timerRun" hidden>
+          <p class="purpose-tag" id="purposeTag">電視</p>
+          <p class="countdown" id="countdown">00:00</p>
+          <div class="timer-actions">
+            <button type="button" class="btn secondary" id="pauseTimerBtn">暫停</button>
+            <button type="button" class="btn danger" id="stopTimerBtn">結束休息</button>
+          </div>
+        </div>
+        <div class="toast" id="timerToast" hidden></div>
+      </section>
+
+      <!-- 設定 -->
+      <section class="screen" data-screen="settings">
+        <h2>設定</h2>
+        <p class="hint tight">基本樣貌版：規則已依家長定案寫死，可在此重置資料。</p>
+        <ul class="settings-list">
+          <li>匯率：1 點＝5 分鐘</li>
+          <li>每科一般上限：20 分</li>
+          <li>全日一般上限：60 分</li>
+          <li>100 分加碼：每次＋5（可累加）</li>
+          <li>84 分以下：0 點</li>
+        </ul>
+        <button type="button" class="btn secondary block" id="resetBtn">清除本機紀錄（重新開始）</button>
+      </section>
+    </main>
+
+    <nav class="tabbar" aria-label="主要選單">
+      <button type="button" class="tab active" data-go="home">首頁</button>
+      <button type="button" class="tab" data-go="log">記成績</button>
+      <button type="button" class="tab" data-go="wallet">錢包</button>
+      <button type="button" class="tab" data-go="timer">計時</button>
+      <button type="button" class="tab" data-go="settings">設定</button>
+    </nav>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
