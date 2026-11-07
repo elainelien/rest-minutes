@@ -1,5 +1,6 @@
 (() => {
   const STORAGE_KEY = "xuxu-rest-v1";
+  const TIMER_KEY = "xuxu-rest-timer-v1";
   const SUBJECTS = ["國文", "數學", "英文"];
   const POINT_MINUTES = 5;
   const SUBJECT_CAP = 20;
@@ -20,11 +21,14 @@
   let selectedPurpose = "電視";
   let timer = {
     running: false,
-    remainingSec: 0,
-    startedWithSec: 0,
+    paused: false,
+    endAt: null,
+    remainingMs: 0,
+    startedWithMs: 0,
     purpose: "電視",
     intervalId: null,
   };
+  let finishing = false;
 
   function todayKey() {
     const d = new Date();
@@ -44,6 +48,38 @@
 
   function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function persistTimer() {
+    if (!timer.running && !timer.paused) {
+      localStorage.removeItem(TIMER_KEY);
+      return;
+    }
+    localStorage.setItem(
+      TIMER_KEY,
+      JSON.stringify({
+        running: timer.running,
+        paused: timer.paused,
+        endAt: timer.endAt,
+        remainingMs: timer.remainingMs,
+        startedWithMs: timer.startedWithMs,
+        purpose: timer.purpose,
+      })
+    );
+  }
+
+  function clearPersistedTimer() {
+    localStorage.removeItem(TIMER_KEY);
+  }
+
+  function loadPersistedTimer() {
+    try {
+      const raw = localStorage.getItem(TIMER_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   function rollDayIfNeeded() {
@@ -96,6 +132,79 @@
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
 
+  function getRemainingMs() {
+    if (timer.running && timer.endAt != null) {
+      return Math.max(0, timer.endAt - Date.now());
+    }
+    return Math.max(0, timer.remainingMs);
+  }
+
+  function updateCountdownDisplay() {
+    const sec = Math.ceil(getRemainingMs() / 1000);
+    document.getElementById("countdown").textContent = formatTime(sec);
+  }
+
+  function showTimerRunUi() {
+    document.getElementById("timerSetup").hidden = true;
+    document.getElementById("timerRun").hidden = false;
+    document.getElementById("purposeTag").textContent = `用途：${timer.purpose}`;
+    document.getElementById("pauseTimerBtn").textContent = timer.paused ? "繼續" : "暫停";
+    updateCountdownDisplay();
+  }
+
+  function showTimerSetupUi() {
+    document.getElementById("timerSetup").hidden = false;
+    document.getElementById("timerRun").hidden = true;
+  }
+
+  function clearTickInterval() {
+    if (timer.intervalId != null) {
+      clearInterval(timer.intervalId);
+      timer.intervalId = null;
+    }
+  }
+
+  function startTickInterval() {
+    clearTickInterval();
+    timer.intervalId = setInterval(syncFromWallClock, 250);
+  }
+
+  function maybeRequestNotification() {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+  }
+
+  function notifyRestEnded() {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission !== "granted") return;
+    try {
+      new Notification("休息時間到", {
+        body: "煦煦休息時間已結束，回來看看錢包吧。",
+        lang: "zh-Hant",
+      });
+    } catch {
+      // ignore notification failures
+    }
+  }
+
+  function syncFromWallClock() {
+    if (finishing) return;
+    if (!timer.running && !timer.paused) return;
+
+    if (timer.running && timer.endAt != null) {
+      timer.remainingMs = Math.max(0, timer.endAt - Date.now());
+      persistTimer();
+    }
+
+    updateCountdownDisplay();
+
+    if (timer.running && timer.remainingMs <= 0) {
+      finishTimer(true);
+    }
+  }
+
   function go(screen) {
     document.querySelectorAll(".screen").forEach((el) => {
       el.classList.toggle("active", el.dataset.screen === screen);
@@ -105,10 +214,11 @@
     });
     if (screen === "timer") {
       const input = document.getElementById("timerMinutes");
-      if (!timer.running) {
+      if (!timer.running && !timer.paused) {
         input.value = Math.max(1, state.balance || 1);
         input.max = Math.max(1, state.balance);
       }
+      syncFromWallClock();
     }
     render();
   }
@@ -163,7 +273,7 @@
     const score = Number(document.getElementById("scoreInput").value);
     const el = document.getElementById("scorePreview");
     if (!Number.isFinite(score) || document.getElementById("scoreInput").value === "") {
-      el.textContent = "輸入分數後會顯示可拿幾分鐘";
+      el.textContent = "輸入分數後，九尾狐會算出可以休息幾分鐘";
       return;
     }
     if (score < 0 || score > 100) {
@@ -238,6 +348,10 @@
 
   function startTimer() {
     rollDayIfNeeded();
+    if (timer.running || timer.paused) {
+      showToast("timerToast", "休息計時進行中", true);
+      return;
+    }
     if (state.balance <= 0) {
       showToast("timerToast", "還沒有可休息的時間，先去記成績吧", true);
       return;
@@ -252,64 +366,107 @@
       return;
     }
     timer.purpose = selectedPurpose;
-    timer.startedWithSec = Math.round(mins * 60);
-    timer.remainingSec = timer.startedWithSec;
+    timer.startedWithMs = Math.round(mins * 60) * 1000;
+    timer.remainingMs = timer.startedWithMs;
+    timer.endAt = Date.now() + timer.remainingMs;
     timer.running = true;
-    document.getElementById("timerSetup").hidden = true;
-    document.getElementById("timerRun").hidden = false;
-    document.getElementById("purposeTag").textContent = `用途：${timer.purpose}`;
-    document.getElementById("pauseTimerBtn").textContent = "暫停";
-    tickTimer();
-    timer.intervalId = setInterval(tickTimer, 1000);
-  }
-
-  function tickTimer() {
-    document.getElementById("countdown").textContent = formatTime(timer.remainingSec);
-    if (timer.remainingSec <= 0) {
-      finishTimer(true);
-      return;
-    }
-    timer.remainingSec -= 1;
+    timer.paused = false;
+    persistTimer();
+    maybeRequestNotification();
+    showTimerRunUi();
+    startTickInterval();
+    syncFromWallClock();
   }
 
   function pauseTimer() {
-    if (!timer.running && timer.remainingSec > 0) {
+    if (timer.paused) {
+      timer.endAt = Date.now() + timer.remainingMs;
       timer.running = true;
+      timer.paused = false;
+      persistTimer();
       document.getElementById("pauseTimerBtn").textContent = "暫停";
-      timer.intervalId = setInterval(tickTimer, 1000);
+      startTickInterval();
+      syncFromWallClock();
       return;
     }
+    if (!timer.running) return;
+    timer.remainingMs = getRemainingMs();
+    timer.endAt = null;
     timer.running = false;
-    clearInterval(timer.intervalId);
+    timer.paused = true;
+    clearTickInterval();
+    persistTimer();
     document.getElementById("pauseTimerBtn").textContent = "繼續";
+    updateCountdownDisplay();
   }
 
   function finishTimer(completed) {
-    clearInterval(timer.intervalId);
+    if (finishing) return;
+    if (!timer.running && !timer.paused && timer.startedWithMs <= 0) return;
+    finishing = true;
+
+    const wasHidden = document.hidden;
+    const remainingMs = getRemainingMs();
+    const startedWithMs = timer.startedWithMs;
+    const purpose = timer.purpose;
+
+    clearTickInterval();
     timer.running = false;
-    const usedSec = timer.startedWithSec - Math.max(0, timer.remainingSec);
-    const usedMin = Math.max(1, Math.ceil(usedSec / 60));
-    // If user ends immediately with almost no time, still charge at least the intention?
-    // Better: charge actual elapsed, minimum 1 min if any second passed; 0 if never started tick
-    const charge = usedSec <= 0 ? 0 : Math.min(state.balance, usedMin);
+    timer.paused = false;
+    timer.endAt = null;
+    timer.remainingMs = 0;
+    timer.startedWithMs = 0;
+    clearPersistedTimer();
+
+    const usedMs = Math.max(0, startedWithMs - remainingMs);
+    const usedMin = usedMs <= 0 ? 0 : Math.max(1, Math.ceil(usedMs / 60000));
+    const charge = usedMs <= 0 ? 0 : Math.min(state.balance, usedMin);
     if (charge > 0) {
       state.balance -= charge;
       addLedger({
         title: completed ? "休息時間到" : "結束休息",
-        detail: `${timer.purpose} · 用了 ${charge} 分`,
+        detail: `${purpose} · 用了 ${charge} 分`,
         delta: -charge,
       });
       save();
     }
-    document.getElementById("timerSetup").hidden = false;
-    document.getElementById("timerRun").hidden = true;
-    timer.remainingSec = 0;
-    timer.startedWithSec = 0;
+
+    showTimerSetupUi();
     render();
     showToast(
       "timerToast",
-      completed ? `休息結束！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
+      completed ? `休息時間到！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
     );
+    if (completed && wasHidden) {
+      notifyRestEnded();
+    }
+    finishing = false;
+  }
+
+  function restoreTimerFromStorage() {
+    const saved = loadPersistedTimer();
+    if (!saved || !saved.startedWithMs) return false;
+    timer.purpose = saved.purpose || "電視";
+    timer.startedWithMs = Number(saved.startedWithMs) || 0;
+    timer.remainingMs = Math.max(0, Number(saved.remainingMs) || 0);
+    timer.endAt = saved.endAt == null ? null : Number(saved.endAt);
+    timer.running = Boolean(saved.running) && timer.endAt != null;
+    timer.paused = Boolean(saved.paused) && !timer.running;
+    if (!timer.running && !timer.paused) {
+      clearPersistedTimer();
+      return false;
+    }
+    if (timer.running && timer.endAt != null) {
+      timer.remainingMs = Math.max(0, timer.endAt - Date.now());
+    }
+    selectedPurpose = timer.purpose;
+    showTimerRunUi();
+    go("timer");
+    if (timer.running) {
+      startTickInterval();
+    }
+    syncFromWallClock();
+    return true;
   }
 
   // Events
@@ -344,16 +501,30 @@
   document.getElementById("stopTimerBtn").addEventListener("click", () => finishTimer(false));
   document.getElementById("resetBtn").addEventListener("click", () => {
     if (!confirm("確定清除本機所有點數與紀錄？")) return;
-    clearInterval(timer.intervalId);
+    clearTickInterval();
+    timer = {
+      running: false,
+      paused: false,
+      endAt: null,
+      remainingMs: 0,
+      startedWithMs: 0,
+      purpose: "電視",
+      intervalId: null,
+    };
+    clearPersistedTimer();
     state = defaultState();
     save();
-    document.getElementById("timerSetup").hidden = false;
-    document.getElementById("timerRun").hidden = true;
+    showTimerSetupUi();
     render();
     go("home");
   });
 
+  document.addEventListener("visibilitychange", syncFromWallClock);
+  window.addEventListener("pageshow", syncFromWallClock);
+  window.addEventListener("focus", syncFromWallClock);
+
   rollDayIfNeeded();
   render();
   updatePreview();
+  restoreTimerFromStorage();
 })();
