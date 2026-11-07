@@ -344,6 +344,23 @@ h3.list-title {
   transition: width 0.35s ease;
 }
 
+.day-cap-line {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-size: 0.92rem;
+  color: var(--fox-deep);
+}
+
+.overtime-line {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fff1e6;
+  color: var(--fox-deep);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .quick-rules {
   background: rgba(255, 255, 255, 0.7);
   border: 1.5px dashed rgba(255, 138, 74, 0.35);
@@ -352,6 +369,41 @@ h3.list-title {
   color: var(--ink-soft);
   font-size: 0.8rem;
   line-height: 1.55;
+}
+
+.setting-toggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  cursor: pointer;
+}
+
+.setting-toggle strong {
+  display: block;
+  font-family: var(--display);
+  color: var(--fox-deep);
+  margin-bottom: 4px;
+}
+
+.setting-toggle small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.setting-toggle input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  accent-color: var(--fox);
+  flex-shrink: 0;
 }
 
 .quick-rules p {

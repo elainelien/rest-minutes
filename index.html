@@ -85,9 +85,11 @@
           <button type="button" class="btn secondary" data-go="timer">開始休息</button>
         </div>
         <div class="subject-caps" id="subjectCaps"></div>
+        <p class="day-cap-line" id="dayCapLine">今日一般上限 60 分</p>
+        <p class="overtime-line" id="overtimeLine" hidden></p>
         <div class="quick-rules">
           <p>85 起 1 點 · 每滿多 5 分再＋1 · 1 點＝5 分</p>
-          <p>每科一般最多 20 分 · 全日一般 60 分 · 每次 100 另＋5</p>
+          <p>每科一般最多 20 分 · 全日一般池 60 分 · 每次 100 另＋5</p>
         </div>
       </section>
 
@@ -135,7 +137,9 @@
             <span class="stat-value" id="walletTodayBonus">0</span>
           </div>
         </div>
-        <p class="hint tight">一般換算每科上限 20、全日 60；100 加碼可一直累加。</p>
+        <p class="day-cap-line" id="walletDayCapLine">今日一般上限 60 分</p>
+        <p class="overtime-line" id="walletOvertimeLine" hidden></p>
+        <p class="hint tight" id="walletHint">一般換算每科上限 20、全日一般池 60；超過部分可當超時繼續賺（設定可關）。100 加碼可一直累加。</p>
         <h3 class="list-title">最近紀錄</h3>
         <ul class="ledger" id="ledger"></ul>
       </section>
@@ -173,14 +177,21 @@
       <!-- 設定 -->
       <section class="screen" data-screen="settings">
         <h2>設定</h2>
-        <p class="hint tight">基本樣貌版：規則已依家長定案寫死，可在此重置資料。</p>
+        <p class="hint tight">家長可調整「超時仍可賺」。其他規則依定案寫死；可重置本機資料。</p>
         <ul class="settings-list">
           <li>匯率：1 點＝5 分鐘</li>
           <li>每科一般上限：20 分</li>
-          <li>全日一般上限：60 分</li>
+          <li>全日一般池：60 分（軟上限）</li>
           <li>100 分加碼：每次＋5（可累加）</li>
           <li>84 分以下：0 點</li>
         </ul>
+        <label class="setting-toggle">
+          <span>
+            <strong>超過每日上限仍可繼續賺</strong>
+            <small>開＝一般池滿後仍可賺「超時」分鐘，當天就能倒數用；關＝全日一般最多 60（舊硬上限）</small>
+          </span>
+          <input type="checkbox" id="allowOvertimeToggle" checked />
+        </label>
         <button type="button" class="btn secondary block" id="resetBtn">清除本機紀錄（重新開始）</button>
       </section>
     </main>
