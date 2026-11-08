@@ -2,6 +2,8 @@
   const STORAGE_KEY = "xuxu-rest-v1";
   const TIMER_KEY = "xuxu-rest-timer-v1";
   const END_ALERT_KEY = "xuxu-rest-end-alert-v1";
+  const BACKUP_APP_ID = "xuxu-rest-minutes";
+  const BACKUP_VERSION = 1;
   const SUBJECTS = ["國文", "數學", "英文"];
   const POINT_MINUTES = 5;
   const SUBJECT_CAP = 20;
@@ -43,10 +45,14 @@
   };
   let finishing = false;
   let audioCtx = null;
+  let audioUnlocked = false;
+  let fallbackAudio = null;
   let endAlert = {
     id: null,
     shown: false,
     acked: false,
+    effectsPlayed: false,
+    notified: false,
     charge: 0,
     purpose: "",
   };
@@ -403,27 +409,96 @@
     return audioCtx;
   }
 
-  function unlockAudio() {
-    const ctx = ensureAudio();
-    if (!ctx) return;
-    // Tiny silent blip so mobile browsers unlock audio on this user gesture.
+  function ensureFallbackAudio() {
+    if (fallbackAudio) return fallbackAudio;
     try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      gain.gain.value = 0.0001;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.01);
+      // Short sine beep as data-URI; unlocks with play() on user gesture.
+      const sampleRate = 22050;
+      const seconds = 0.18;
+      const samples = Math.floor(sampleRate * seconds);
+      const data = new Uint8Array(44 + samples * 2);
+      const view = new DataView(data.buffer);
+      const writeStr = (offset, str) => {
+        for (let i = 0; i < str.length; i += 1) view.setUint8(offset + i, str.charCodeAt(i));
+      };
+      writeStr(0, "RIFF");
+      view.setUint32(4, 36 + samples * 2, true);
+      writeStr(8, "WAVE");
+      writeStr(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, "data");
+      view.setUint32(40, samples * 2, true);
+      for (let i = 0; i < samples; i += 1) {
+        const t = i / sampleRate;
+        const env = Math.min(1, i / 200) * Math.min(1, (samples - i) / 400);
+        const sample = Math.sin(2 * Math.PI * 880 * t) * 0.35 * env;
+        view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, sample)) * 0x7fff, true);
+      }
+      let binary = "";
+      for (let i = 0; i < data.length; i += 1) binary += String.fromCharCode(data[i]);
+      fallbackAudio = new Audio(`data:audio/wav;base64,${btoa(binary)}`);
+      fallbackAudio.preload = "auto";
+      return fallbackAudio;
     } catch {
-      // ignore unlock failures
+      return null;
     }
   }
 
-  function playTimeUpChime() {
-    if (state.endSoundOn === false) return false;
+  function unlockAudio() {
+    const ctx = ensureAudio();
+    if (ctx) {
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.02);
+        audioUnlocked = true;
+      } catch {
+        // ignore unlock failures
+      }
+      ctx.resume().then(() => {
+        audioUnlocked = true;
+      }).catch(() => {});
+    }
+    const beep = ensureFallbackAudio();
+    if (beep) {
+      try {
+        beep.muted = true;
+        const p = beep.play();
+        if (p && typeof p.then === "function") {
+          p.then(() => {
+            beep.pause();
+            beep.currentTime = 0;
+            beep.muted = false;
+            audioUnlocked = true;
+          }).catch(() => {
+            beep.muted = false;
+          });
+        } else {
+          beep.muted = false;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  function playWebAudioChime() {
     const ctx = ensureAudio();
     if (!ctx) return false;
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+      // Still try; if still suspended the notes may be silent.
+    }
     try {
       const now = ctx.currentTime;
       const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
@@ -441,10 +516,51 @@
         osc.start(t0);
         osc.stop(t0 + 0.34);
       });
+      return ctx.state === "running";
+    } catch {
+      return false;
+    }
+  }
+
+  function playFallbackBeeps() {
+    const beep = ensureFallbackAudio();
+    if (!beep) return false;
+    try {
+      beep.pause();
+      beep.currentTime = 0;
+      beep.muted = false;
+      const p = beep.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {});
+      }
+      // Two follow-up beeps for a simple chime pattern.
+      setTimeout(() => {
+        try {
+          beep.currentTime = 0;
+          beep.play().catch(() => {});
+        } catch {
+          // ignore
+        }
+      }, 220);
+      setTimeout(() => {
+        try {
+          beep.currentTime = 0;
+          beep.play().catch(() => {});
+        } catch {
+          // ignore
+        }
+      }, 440);
       return true;
     } catch {
       return false;
     }
+  }
+
+  function playTimeUpChime() {
+    if (state.endSoundOn === false) return false;
+    const webOk = playWebAudioChime();
+    if (webOk) return true;
+    return playFallbackBeeps();
   }
 
   function vibrateTimeUp() {
@@ -476,80 +592,145 @@
     }
   }
 
-  function persistEndAlert() {
-    if (!endAlert.id || endAlert.acked) {
-      try {
-        sessionStorage.removeItem(END_ALERT_KEY);
-      } catch {
-        // ignore
-      }
-      return;
-    }
+  function clearPersistedEndAlert() {
     try {
-      sessionStorage.setItem(
-        END_ALERT_KEY,
-        JSON.stringify({
-          id: endAlert.id,
-          shown: endAlert.shown,
-          acked: endAlert.acked,
-          charge: endAlert.charge,
-          purpose: endAlert.purpose,
-        })
-      );
+      sessionStorage.removeItem(END_ALERT_KEY);
     } catch {
       // ignore
     }
+    try {
+      localStorage.removeItem(END_ALERT_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  function persistEndAlert() {
+    if (!endAlert.id || endAlert.acked) {
+      clearPersistedEndAlert();
+      return;
+    }
+    const payload = JSON.stringify({
+      id: endAlert.id,
+      shown: endAlert.shown,
+      acked: false,
+      effectsPlayed: Boolean(endAlert.effectsPlayed),
+      notified: Boolean(endAlert.notified),
+      charge: endAlert.charge,
+      purpose: endAlert.purpose,
+    });
+    try {
+      sessionStorage.setItem(END_ALERT_KEY, payload);
+    } catch {
+      // ignore
+    }
+    // localStorage survives tab discard / some mobile reloads where sessionStorage does not.
+    try {
+      localStorage.setItem(END_ALERT_KEY, payload);
+    } catch {
+      // ignore
+    }
+  }
+
+  function readPersistedEndAlert() {
+    const sources = [];
+    try {
+      sources.push(sessionStorage.getItem(END_ALERT_KEY));
+    } catch {
+      // ignore
+    }
+    try {
+      sources.push(localStorage.getItem(END_ALERT_KEY));
+    } catch {
+      // ignore
+    }
+    for (const raw of sources) {
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.id && !parsed.acked) return parsed;
+      } catch {
+        // ignore corrupt
+      }
+    }
+    return null;
   }
 
   function loadPendingEndAlert() {
-    try {
-      const raw = sessionStorage.getItem(END_ALERT_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!parsed?.id || parsed.acked) {
-        sessionStorage.removeItem(END_ALERT_KEY);
-        return;
-      }
-      endAlert = {
-        id: parsed.id,
-        shown: Boolean(parsed.shown),
-        acked: false,
-        charge: Number(parsed.charge) || 0,
-        purpose: parsed.purpose || "",
-      };
-      showEndAlertUi(false);
-    } catch {
-      // ignore
+    const parsed = readPersistedEndAlert();
+    if (!parsed) {
+      clearPersistedEndAlert();
+      return;
     }
+    endAlert = {
+      id: parsed.id,
+      shown: Boolean(parsed.shown),
+      acked: false,
+      effectsPlayed: Boolean(parsed.effectsPlayed),
+      notified: Boolean(parsed.notified),
+      charge: Number(parsed.charge) || 0,
+      purpose: parsed.purpose || "",
+    };
+    // Always show modal; retry effects if they never landed (bg tab / autoplay).
+    showEndAlertUi({ playEffects: !endAlert.effectsPlayed });
   }
 
-  function showEndAlertUi(withEffects) {
+  function openEndAlertModal() {
+    const modal = document.getElementById("endAlert");
+    if (!modal) return;
+    modal.hidden = false;
+    modal.removeAttribute("hidden");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function showEndAlertUi({ playEffects } = { playEffects: false }) {
     const modal = document.getElementById("endAlert");
     if (!modal || !endAlert.id || endAlert.acked) return;
 
     const meta = document.getElementById("endAlertMeta");
     const body = document.getElementById("endAlertBody");
-    body.textContent = "月亮走完這一圈了，回來看看錢包吧。";
-    meta.textContent = endAlert.charge > 0
-      ? `已扣除 ${endAlert.charge} 分${endAlert.purpose ? ` · ${endAlert.purpose}` : ""}`
-      : endAlert.purpose
-        ? `用途：${endAlert.purpose}`
-        : "";
-
-    modal.hidden = false;
-    const alreadyShown = endAlert.shown;
-    endAlert.shown = true;
-    persistEndAlert();
-
-    if (withEffects && !alreadyShown) {
-      playTimeUpChime();
-      vibrateTimeUp();
-      notifyRestEnded();
+    if (body) body.textContent = "月亮走完這一圈了，回來看看錢包吧。";
+    if (meta) {
+      meta.textContent = endAlert.charge > 0
+        ? `已扣除 ${endAlert.charge} 分${endAlert.purpose ? ` · ${endAlert.purpose}` : ""}`
+        : endAlert.purpose
+          ? `用途：${endAlert.purpose}`
+          : "";
     }
+
+    openEndAlertModal();
+    endAlert.shown = true;
+
+    if (playEffects && !endAlert.effectsPlayed) {
+      const sounded = playTimeUpChime();
+      const vibrated = vibrateTimeUp();
+      if (!endAlert.notified) {
+        notifyRestEnded();
+        endAlert.notified = true;
+      }
+      // Retry later if still backgrounded / audio locked; stop once something worked
+      // or we clearly attempted while unlocked & visible.
+      if (
+        sounded ||
+        vibrated ||
+        state.endSoundOn === false ||
+        (!document.hidden && audioUnlocked)
+      ) {
+        endAlert.effectsPlayed = true;
+      }
+    }
+
+    persistEndAlert();
 
     const ack = document.getElementById("endAlertAck");
     if (ack) {
-      setTimeout(() => ack.focus(), 30);
+      setTimeout(() => {
+        try {
+          ack.focus();
+        } catch {
+          // ignore
+        }
+      }, 30);
     }
   }
 
@@ -557,18 +738,19 @@
     if (!id) return;
     if (endAlert.acked && endAlert.id === id) return;
     if (endAlert.id === id && endAlert.shown) {
-      // Keep modal visible if already shown but not acked.
-      showEndAlertUi(false);
+      showEndAlertUi({ playEffects: !endAlert.effectsPlayed });
       return;
     }
     endAlert = {
       id,
       shown: false,
       acked: false,
+      effectsPlayed: false,
+      notified: false,
       charge: Number(charge) || 0,
       purpose: purpose || "",
     };
-    showEndAlertUi(true);
+    showEndAlertUi({ playEffects: true });
   }
 
   function acknowledgeEndAlert() {
@@ -578,36 +760,53 @@
     }
     endAlert.acked = true;
     endAlert.shown = true;
+    endAlert.effectsPlayed = true;
+    endAlert.notified = true;
     persistEndAlert();
     hideEndAlertUi();
   }
 
   function hideEndAlertUi() {
     const modal = document.getElementById("endAlert");
-    if (modal) modal.hidden = true;
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute("hidden", "");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function isTimerDue() {
+    if (timer.running && timer.endAt != null) {
+      return Date.now() >= timer.endAt;
+    }
+    return false;
   }
 
   function syncFromWallClock() {
     if (finishing) return;
-    if (!timer.running && !timer.paused) return;
 
     if (timer.running && timer.endAt != null) {
       timer.remainingMs = Math.max(0, timer.endAt - Date.now());
       persistTimer();
     }
 
-    updateCountdownDisplay();
+    if (timer.running || timer.paused) {
+      updateCountdownDisplay();
+    }
 
-    if (timer.running && timer.remainingMs <= 0) {
+    // Reliable completion: wall-clock due on each tick AND after resume/focus.
+    if (isTimerDue()) {
       finishTimer(true);
     }
   }
 
   function handleVisibilityOrFocus() {
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
     syncFromWallClock();
+    // If time already ended (or alert pending), always re-show modal; retry sound/vibrate once.
     if (endAlert.id && !endAlert.acked) {
-      // Re-surface after background / silent tabs without replaying effects.
-      showEndAlertUi(false);
+      showEndAlertUi({ playEffects: !endAlert.effectsPlayed });
     }
   }
 
@@ -1032,7 +1231,7 @@
     timer.paused = false;
     // New session clears prior end-alert ack state only when starting fresh.
     if (endAlert.acked || !endAlert.id) {
-      endAlert = { id: null, shown: false, acked: false, charge: 0, purpose: "" };
+      endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
       persistEndAlert();
     }
     persistTimer();
@@ -1070,50 +1269,54 @@
     if (!timer.running && !timer.paused && timer.startedWithMs <= 0) return;
     finishing = true;
 
-    const remainingMs = getRemainingMs();
-    const startedWithMs = timer.startedWithMs;
-    const purpose = timer.purpose;
-    const sessionId = timer.sessionId || `${Date.now()}-ended`;
+    try {
+      const remainingMs = getRemainingMs();
+      const startedWithMs = timer.startedWithMs;
+      const purpose = timer.purpose;
+      const sessionId = timer.sessionId || `${Date.now()}-ended`;
 
-    clearTickInterval();
-    timer.running = false;
-    timer.paused = false;
-    timer.endAt = null;
-    timer.remainingMs = 0;
-    timer.startedWithMs = 0;
-    timer.sessionId = null;
-    clearPersistedTimer();
+      clearTickInterval();
+      timer.running = false;
+      timer.paused = false;
+      timer.endAt = null;
+      timer.remainingMs = 0;
+      timer.startedWithMs = 0;
+      timer.sessionId = null;
+      clearPersistedTimer();
 
-    const usedMs = Math.max(0, startedWithMs - remainingMs);
-    const usedMin = usedMs <= 0 ? 0 : Math.max(1, Math.ceil(usedMs / 60000));
-    const charge = usedMs <= 0 ? 0 : Math.min(state.balance, usedMin);
-    if (charge > 0) {
-      state.balance -= charge;
-      state.todayRedeemed = (state.todayRedeemed || 0) + charge;
-      const bucket = ensureDayBucket(state, state.day);
-      bucket.redeemed = state.todayRedeemed;
-      addLedger({
-        kind: "redeem",
-        minutes: charge,
-        purpose,
-        title: completed ? "休息時間到" : "結束休息",
-        detail: `${purpose} · 用了 ${charge} 分`,
-        delta: -charge,
-      });
-      pruneDayHistory(state);
-      save();
+      const usedMs = Math.max(0, startedWithMs - remainingMs);
+      const usedMin = usedMs <= 0 ? 0 : Math.max(1, Math.ceil(usedMs / 60000));
+      // Allow charge even when balance briefly races; floor at 0 for normal redeem.
+      const charge = usedMs <= 0 ? 0 : Math.min(Math.max(0, state.balance), usedMin);
+      if (charge > 0) {
+        state.balance -= charge;
+        state.todayRedeemed = (state.todayRedeemed || 0) + charge;
+        const bucket = ensureDayBucket(state, state.day);
+        bucket.redeemed = state.todayRedeemed;
+        addLedger({
+          kind: "redeem",
+          minutes: charge,
+          purpose,
+          title: completed ? "休息時間到" : "結束休息",
+          detail: `${purpose} · 用了 ${charge} 分`,
+          delta: -charge,
+        });
+        pruneDayHistory(state);
+        save();
+      }
+
+      showTimerSetupUi();
+      render();
+      showToast(
+        "timerToast",
+        completed ? `休息時間到！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
+      );
+      if (completed) {
+        fireRestEndAlert({ id: sessionId, charge, purpose });
+      }
+    } finally {
+      finishing = false;
     }
-
-    showTimerSetupUi();
-    render();
-    showToast(
-      "timerToast",
-      completed ? `休息時間到！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
-    );
-    if (completed) {
-      fireRestEndAlert({ id: sessionId, charge, purpose });
-    }
-    finishing = false;
   }
 
   function restoreTimerFromStorage() {
@@ -1207,6 +1410,254 @@
       acknowledgeEndAlert();
     }
   });
+  function setBackupStatus(message, isError = false) {
+    const el = document.getElementById("backupStatus");
+    if (!el) return;
+    if (!message) {
+      el.hidden = true;
+      el.textContent = "";
+      el.classList.remove("is-error");
+      return;
+    }
+    el.hidden = false;
+    el.textContent = message;
+    el.classList.toggle("is-error", isError);
+  }
+
+  function buildBackupPayload() {
+    let timerSnapshot = null;
+    if (timer.running || timer.paused) {
+      timerSnapshot = {
+        running: timer.running,
+        paused: timer.paused,
+        endAt: timer.endAt,
+        remainingMs: getRemainingMs(),
+        startedWithMs: timer.startedWithMs,
+        purpose: timer.purpose,
+        sessionId: timer.sessionId,
+      };
+    } else {
+      timerSnapshot = loadPersistedTimer();
+    }
+
+    let endAlertSnapshot = null;
+    if (endAlert.id && !endAlert.acked) {
+      endAlertSnapshot = {
+        id: endAlert.id,
+        shown: endAlert.shown,
+        acked: false,
+        effectsPlayed: Boolean(endAlert.effectsPlayed),
+        notified: Boolean(endAlert.notified),
+        charge: endAlert.charge,
+        purpose: endAlert.purpose,
+      };
+    } else {
+      endAlertSnapshot = readPersistedEndAlert();
+    }
+
+    return {
+      app: BACKUP_APP_ID,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      state: {
+        balance: state.balance,
+        day: state.day,
+        regularBySubject: { ...state.regularBySubject },
+        todayRegular: state.todayRegular,
+        todayOvertime: state.todayOvertime,
+        todayBonus: state.todayBonus,
+        todayRedeemed: state.todayRedeemed,
+        todayManualDeducted: state.todayManualDeducted,
+        allowOvertimeEarn: state.allowOvertimeEarn !== false,
+        endSoundOn: state.endSoundOn !== false,
+        ledger: Array.isArray(state.ledger) ? state.ledger : [],
+        dayHistory: state.dayHistory && typeof state.dayHistory === "object" ? state.dayHistory : {},
+      },
+      timer: timerSnapshot,
+      endAlert: endAlertSnapshot,
+    };
+  }
+
+  function exportBackup() {
+    try {
+      const payload = buildBackupPayload();
+      const json = JSON.stringify(payload, null, 2);
+      const stamp = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const filename =
+        `xuxu-rest-backup-${stamp.getFullYear()}${pad(stamp.getMonth() + 1)}${pad(stamp.getDate())}` +
+        `-${pad(stamp.getHours())}${pad(stamp.getMinutes())}.json`;
+      const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setBackupStatus(`已匯出 ${filename}`);
+    } catch {
+      setBackupStatus("匯出失敗，請再試一次", true);
+    }
+  }
+
+  function isPlainObject(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function validateBackupPayload(data) {
+    if (!isPlainObject(data)) {
+      return { ok: false, error: "檔案不是有效的備份物件" };
+    }
+    if (data.app != null && data.app !== BACKUP_APP_ID) {
+      return { ok: false, error: "這不是煦煦休息時間的備份檔" };
+    }
+    if (data.version != null && (!Number.isFinite(Number(data.version)) || Number(data.version) > BACKUP_VERSION)) {
+      return { ok: false, error: "備份版本較新，請先更新 App 再還原" };
+    }
+    const rawState = data.state != null ? data.state : data;
+    if (!isPlainObject(rawState)) {
+      return { ok: false, error: "備份缺少 state 資料" };
+    }
+    if (!Number.isFinite(Number(rawState.balance))) {
+      return { ok: false, error: "備份的餘額格式不正確" };
+    }
+    if (rawState.ledger != null && !Array.isArray(rawState.ledger)) {
+      return { ok: false, error: "備份的流水帳格式不正確" };
+    }
+    if (rawState.dayHistory != null && !isPlainObject(rawState.dayHistory)) {
+      return { ok: false, error: "備份的每日紀錄格式不正確" };
+    }
+    if (rawState.regularBySubject != null && !isPlainObject(rawState.regularBySubject)) {
+      return { ok: false, error: "備份的科目點數格式不正確" };
+    }
+    if (data.timer != null && data.timer !== null && !isPlainObject(data.timer)) {
+      return { ok: false, error: "備份的計時狀態格式不正確" };
+    }
+    if (data.endAlert != null && data.endAlert !== null && !isPlainObject(data.endAlert)) {
+      return { ok: false, error: "備份的結束提示格式不正確" };
+    }
+    return { ok: true, state: rawState, timer: data.timer ?? null, endAlert: data.endAlert ?? null };
+  }
+
+  function applyBackup(parsed) {
+    clearTickInterval();
+    timer = {
+      running: false,
+      paused: false,
+      endAt: null,
+      remainingMs: 0,
+      startedWithMs: 0,
+      purpose: "電視",
+      sessionId: null,
+      intervalId: null,
+    };
+    clearPersistedTimer();
+    endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
+    clearPersistedEndAlert();
+    hideEndAlertUi();
+
+    const merged = { ...defaultState(), ...parsed.state };
+    if (!merged.dayHistory || typeof merged.dayHistory !== "object") merged.dayHistory = {};
+    if (!Number.isFinite(merged.todayRedeemed)) merged.todayRedeemed = 0;
+    if (!Number.isFinite(merged.todayManualDeducted)) merged.todayManualDeducted = 0;
+    if (typeof merged.endSoundOn !== "boolean") merged.endSoundOn = true;
+    if (typeof merged.allowOvertimeEarn !== "boolean") merged.allowOvertimeEarn = true;
+    migrateLedger(merged);
+    rebuildDayHistoryFromLedger(merged);
+    state = merged;
+    save();
+
+    if (parsed.endAlert && parsed.endAlert.id && !parsed.endAlert.acked) {
+      try {
+        const payload = JSON.stringify({
+          id: parsed.endAlert.id,
+          shown: Boolean(parsed.endAlert.shown),
+          acked: false,
+          effectsPlayed: Boolean(parsed.endAlert.effectsPlayed),
+          notified: Boolean(parsed.endAlert.notified),
+          charge: Number(parsed.endAlert.charge) || 0,
+          purpose: parsed.endAlert.purpose || "",
+        });
+        sessionStorage.setItem(END_ALERT_KEY, payload);
+        localStorage.setItem(END_ALERT_KEY, payload);
+      } catch {
+        // ignore
+      }
+    }
+
+    if (parsed.timer && isPlainObject(parsed.timer) && parsed.timer.startedWithMs) {
+      try {
+        localStorage.setItem(TIMER_KEY, JSON.stringify(parsed.timer));
+      } catch {
+        // ignore
+      }
+    }
+
+    selectedStatsDay = todayKey();
+    selectedSubject = "國文";
+    selectedPurpose = "電視";
+    showTimerSetupUi();
+    render();
+    updatePreview();
+    loadPendingEndAlert();
+    restoreTimerFromStorage();
+    go(timer.running || timer.paused ? "timer" : "home");
+  }
+
+  function importBackupFromFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setBackupStatus("讀取檔案失敗，原有資料未變更", true);
+    };
+    reader.onload = () => {
+      let data;
+      try {
+        data = JSON.parse(String(reader.result || ""));
+      } catch {
+        setBackupStatus("檔案不是有效的 JSON，原有資料未變更", true);
+        return;
+      }
+      const checked = validateBackupPayload(data);
+      if (!checked.ok) {
+        setBackupStatus(`${checked.error}，原有資料未變更`, true);
+        return;
+      }
+      const when = data.exportedAt ? `\n備份時間：${data.exportedAt}` : "";
+      const ok = confirm(
+        `確定用備份覆寫目前本機資料？\n（點數、流水、設定與計時都會被取代）${when}\n\n此動作無法復原。`
+      );
+      if (!ok) {
+        setBackupStatus("已取消還原");
+        return;
+      }
+      try {
+        applyBackup(checked);
+        setBackupStatus("還原完成");
+      } catch (err) {
+        setBackupStatus("還原時發生錯誤，請再試一次或換一份備份", true);
+        console.error(err);
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  document.getElementById("exportBackupBtn").addEventListener("click", exportBackup);
+  document.getElementById("importBackupBtn").addEventListener("click", () => {
+    setBackupStatus("");
+    const input = document.getElementById("importBackupFile");
+    if (input) {
+      input.value = "";
+      input.click();
+    }
+  });
+  document.getElementById("importBackupFile").addEventListener("change", (event) => {
+    const file = event.target.files && event.target.files[0];
+    importBackupFromFile(file);
+  });
+
   document.getElementById("resetBtn").addEventListener("click", () => {
     if (!confirm("確定清除本機所有點數與紀錄？")) return;
     clearTickInterval();
@@ -1221,7 +1672,7 @@
       intervalId: null,
     };
     clearPersistedTimer();
-    endAlert = { id: null, shown: false, acked: false, charge: 0, purpose: "" };
+    endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
     persistEndAlert();
     hideEndAlertUi();
     const keepOvertime = state.allowOvertimeEarn !== false;
@@ -1239,9 +1690,44 @@
   document.addEventListener("visibilitychange", handleVisibilityOrFocus);
   window.addEventListener("pageshow", handleVisibilityOrFocus);
   window.addEventListener("focus", handleVisibilityOrFocus);
+  window.addEventListener("pagehide", () => {
+    // Flush wall-clock remaining so a later restore sees an accurate endAt.
+    if (timer.running && timer.endAt != null) {
+      timer.remainingMs = Math.max(0, timer.endAt - Date.now());
+      persistTimer();
+    }
+    persistEndAlert();
+  });
   // Test / automation hook: dispatch to force a completed rest end without waiting.
   window.addEventListener("xuxu-rest-force-end", () => {
     if (timer.running || timer.paused) finishTimer(true);
+  });
+  // Test / automation hook: start an N-second rest (requires balance).
+  window.addEventListener("xuxu-rest-start-seconds", (event) => {
+    const seconds = Number(event?.detail?.seconds);
+    if (!Number.isFinite(seconds) || seconds <= 0) return;
+    unlockAudio();
+    if (timer.running || timer.paused) return;
+    if (state.balance <= 0) return;
+    const minsNeeded = Math.max(1, Math.ceil(seconds / 60));
+    if (state.balance < minsNeeded && state.balance < 1) return;
+    timer.purpose = selectedPurpose;
+    timer.sessionId = `${Date.now()}-sec-${Math.random().toString(16).slice(2)}`;
+    timer.startedWithMs = Math.round(seconds * 1000);
+    timer.remainingMs = timer.startedWithMs;
+    timer.endAt = Date.now() + timer.remainingMs;
+    timer.running = true;
+    timer.paused = false;
+    if (endAlert.acked || !endAlert.id) {
+      endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
+      persistEndAlert();
+    }
+    persistTimer();
+    maybeRequestNotification();
+    showTimerRunUi();
+    go("timer");
+    startTickInterval();
+    syncFromWallClock();
   });
 
   rollDayIfNeeded();
@@ -1250,4 +1736,6 @@
   updatePreview();
   loadPendingEndAlert();
   restoreTimerFromStorage();
+  // Catch overdue timers immediately after restore (in case interval was delayed).
+  syncFromWallClock();
 })();
