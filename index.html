@@ -219,6 +219,14 @@
           </span>
           <input type="checkbox" id="endSoundToggle" checked />
         </label>
+        <div class="panel backup-panel">
+          <div class="panel-head"><h3>備份／還原</h3><span class="mini-seal">冊</span></div>
+          <p class="hint tight">匯出本機點數、流水、每日紀錄、設定與進行中的計時；換手機或清除前建議先備份。</p>
+          <button type="button" class="btn secondary block" id="exportBackupBtn">匯出備份<small>下載 JSON 檔</small></button>
+          <button type="button" class="btn secondary block" id="importBackupBtn">還原備份<small>選擇檔案覆寫</small></button>
+          <input type="file" id="importBackupFile" accept="application/json,.json" hidden />
+          <p class="hint tight backup-status" id="backupStatus" hidden></p>
+        </div>
         <button type="button" class="btn secondary block" id="resetBtn">清除本機紀錄（重新開始）</button>
       </section>
     </main>

@@ -358,9 +358,14 @@ h3 { font-family: var(--display); }
 }
 .stats-rest strong { color: var(--gold-bright); font-family: var(--display); }
 
-/* end-of-rest alert */
+.backup-panel { margin-bottom: 14px; }
+.backup-panel .btn + .btn { margin-top: 10px; }
+.backup-status { margin: 10px 0 0; }
+.backup-status.is-error { color: var(--danger); }
+
+/* end-of-rest alert — above app chrome; never clipped by .app overflow */
 .end-alert {
-  position: fixed; inset: 0; z-index: 40;
+  position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
   padding: 24px 18px;
 }
