@@ -18,10 +18,10 @@
         <p class="brand">煦煦休息時間</p>
         <p class="sub" id="todayLabel">月下九尾 · 讀書有成，休息有度</p>
       </div>
-      <div class="balance-chip" title="剩餘可休息">
+      <div class="balance-chip" id="balanceChip" title="剩餘可休息">
         <span class="chip-seal" aria-hidden="true">休</span>
         <span class="balance-num" id="balanceMinutes">0</span>
-        <span class="balance-unit">分</span>
+        <span class="balance-unit" id="balanceUnit">分</span>
       </div>
     </header>
 
@@ -35,13 +35,18 @@
           </div>
           <div class="hero-copy">
             <p class="eyebrow">煦煦，今天的月光存好了嗎？</p>
-            <p class="hero-minutes"><span id="homeBalance">0</span><small>分鐘可用</small></p>
+            <p class="hero-minutes" id="homeBalanceWrap"><span id="homeBalance">0</span><small id="homeBalanceLabel">分鐘可用</small></p>
             <p class="hint" id="homeHint">記康軒成績，讓月下狐火更亮</p>
           </div>
         </div>
         <div class="action-row">
           <button type="button" class="btn primary" data-go="log">記成績<small>寫一筆</small></button>
           <button type="button" class="btn secondary" data-go="timer">開始休息<small>陪一會</small></button>
+        </div>
+        <div class="panel deduct-teaser">
+          <div class="panel-head"><h3>家長扣除</h3><span class="mini-seal">預</span></div>
+          <p class="hint tight">預支休息時間時，可從錢包手動扣除；餘額可成「尚欠」。</p>
+          <button type="button" class="btn secondary block" data-go="wallet" data-focus-deduct="1">去錢包扣除<small>預支／手動</small></button>
         </div>
         <div class="panel">
           <div class="panel-head"><h3>今日修煉</h3><span class="mini-seal">月</span></div>
@@ -106,9 +111,9 @@
           <span class="mini-seal gold">囊</span>
         </div>
         <div class="stat-grid">
-          <div class="stat hero-stat">
-            <span class="stat-label">剩餘可用</span>
-            <span class="stat-value" id="walletBalance">0</span><span class="stat-unit">分</span>
+          <div class="stat hero-stat" id="walletBalanceStat">
+            <span class="stat-label" id="walletBalanceLabel">剩餘可用</span>
+            <span class="stat-value" id="walletBalance">0</span><span class="stat-unit" id="walletBalanceUnit">分</span>
           </div>
           <div class="stat">
             <span class="stat-label">今日一般已賺</span>
@@ -118,6 +123,22 @@
             <span class="stat-label">今日 100 加碼</span>
             <span class="stat-value" id="walletTodayBonus">0</span>
           </div>
+        </div>
+        <div class="panel deduct-panel" id="deductPanel">
+          <div class="panel-head"><h3>手動扣除／預支</h3><span class="mini-seal gold">預</span></div>
+          <p class="hint tight">家長專用。若扣除超過餘額，會變成「尚欠」；之後記成績賺到的分鐘會先還債。</p>
+          <form id="deductForm" class="form deduct-form">
+            <label>
+              扣除幾分鐘
+              <input type="number" id="deductMinutes" name="minutes" min="1" step="1" inputmode="numeric" placeholder="例如 20" required />
+            </label>
+            <label>
+              備註（選填）
+              <input type="text" id="deductNote" name="note" maxlength="40" placeholder="例如 預支" />
+            </label>
+            <button type="submit" class="btn primary block" id="deductSubmitBtn">確認扣除<small>先預覽再套用</small></button>
+          </form>
+          <div class="toast" id="deductToast" hidden></div>
         </div>
         <div class="panel">
           <p class="day-cap-line" id="walletDayCapLine">今日一般上限 60 分</p>
@@ -219,6 +240,20 @@
       <p class="end-alert-body" id="endAlertBody">月亮走完這一圈了，回來看看錢包吧。</p>
       <p class="end-alert-meta" id="endAlertMeta"></p>
       <button type="button" class="btn primary block" id="endAlertAck">知道了<small>關掉提示</small></button>
+    </div>
+  </div>
+
+  <div class="end-alert" id="deductConfirm" hidden role="dialog" aria-modal="true" aria-labelledby="deductConfirmTitle">
+    <div class="end-alert-backdrop" id="deductConfirmBackdrop"></div>
+    <div class="end-alert-card">
+      <span class="mini-seal gold" aria-hidden="true">預</span>
+      <h2 id="deductConfirmTitle">確認手動扣除？</h2>
+      <p class="end-alert-body" id="deductConfirmBody">確定要從休息錢包扣除嗎？</p>
+      <p class="end-alert-meta" id="deductConfirmMeta"></p>
+      <div class="confirm-actions">
+        <button type="button" class="btn secondary" id="deductConfirmCancel">取消</button>
+        <button type="button" class="btn primary" id="deductConfirmOk">確定扣除<small>寫入流水</small></button>
+      </div>
     </div>
   </div>
 
