@@ -1253,6 +1253,41 @@
     if (walletHistory) walletHistory.innerHTML = historyHtml;
   }
 
+  function normalizeSubject(value) {
+    const raw = String(value || "").trim();
+    return SUBJECTS.includes(raw) ? raw : null;
+  }
+
+  /** Prefer live DOM selection over the module variable so submit cannot keep a stale default. */
+  function resolveSelectedSubject() {
+    const activeBtn = document.querySelector("#subjectSeg .seg-btn[data-subject].active");
+    const fromActive = normalizeSubject(activeBtn?.dataset?.subject);
+    if (fromActive) return fromActive;
+
+    const pressedBtn = document.querySelector('#subjectSeg .seg-btn[data-subject][aria-pressed="true"]');
+    const fromPressed = normalizeSubject(pressedBtn?.dataset?.subject);
+    if (fromPressed) return fromPressed;
+
+    const fromInput = normalizeSubject(document.getElementById("subjectInput")?.value);
+    if (fromInput) return fromInput;
+
+    const fromMemory = normalizeSubject(selectedSubject);
+    return fromMemory || SUBJECTS[0];
+  }
+
+  function setSelectedSubject(subject, { syncPreview = true } = {}) {
+    const next = normalizeSubject(subject) || SUBJECTS[0];
+    selectedSubject = next;
+    const input = document.getElementById("subjectInput");
+    if (input) input.value = next;
+    document.querySelectorAll("#subjectSeg .seg-btn[data-subject]").forEach((btn) => {
+      const on = btn.dataset.subject === next;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    if (syncPreview) updatePreview();
+  }
+
   function updatePreview() {
     const score = Number(document.getElementById("scoreInput").value);
     const el = document.getElementById("scorePreview");
@@ -1264,7 +1299,9 @@
       el.textContent = "請輸入 0–100 的分數";
       return;
     }
-    const award = computeAward(selectedSubject, score);
+    const subject = resolveSelectedSubject();
+    if (subject !== selectedSubject) setSelectedSubject(subject, { syncPreview: false });
+    const award = computeAward(subject, score);
     if (award.points === 0) {
       el.textContent = `${score} 分 → 0 點（未達 85）`;
       return;
@@ -1378,29 +1415,31 @@
   function submitScore(event) {
     event.preventDefault();
     rollDayIfNeeded();
+    // Read subject from the active control at submit time (not a possibly stale module var).
+    const subject = resolveSelectedSubject();
+    setSelectedSubject(subject, { syncPreview: false });
     const score = Number(document.getElementById("scoreInput").value);
     const unit = document.getElementById("unitInput").value.trim();
     if (!Number.isFinite(score) || score < 0 || score > 100) {
       showToast("logToast", "請輸入 0–100 的分數", true);
       return;
     }
-    const award = computeAward(selectedSubject, score);
-    state.regularBySubject[selectedSubject] =
-      (state.regularBySubject[selectedSubject] || 0) + award.regularGranted;
+    const award = computeAward(subject, score);
+    state.regularBySubject[subject] = (state.regularBySubject[subject] || 0) + award.regularGranted;
     state.todayRegular += award.regularGranted;
     state.todayOvertime = (state.todayOvertime || 0) + award.overtimeGranted;
     state.todayBonus += award.bonus;
     const settle = creditMinutesAgainstDebt(award.total);
 
     const bucket = ensureDayBucket(state, state.day);
-    bucket.scores[selectedSubject].push(score);
+    bucket.scores[subject].push(score);
     bucket.regular = state.todayRegular;
     bucket.overtime = state.todayOvertime;
     bucket.bonus = state.todayBonus;
 
     addLedger({
       kind: "earn",
-      subject: selectedSubject,
+      subject,
       score,
       points: award.points,
       regular: award.regularGranted,
@@ -1408,7 +1447,7 @@
       bonus: award.bonus,
       repaid: settle.repaid,
       credited: settle.credited,
-      title: `${selectedSubject} ${score} 分`,
+      title: `${subject} ${score} 分`,
       detail: [
         unit || "康軒刷題",
         `${award.points} 點`,
@@ -1768,14 +1807,9 @@
     });
   });
 
-  document.querySelectorAll(".seg-btn[data-subject]").forEach((btn) => {
+  document.querySelectorAll("#subjectSeg .seg-btn[data-subject]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      selectedSubject = btn.dataset.subject;
-      document.getElementById("subjectInput").value = selectedSubject;
-      document.querySelectorAll(".seg-btn[data-subject]").forEach((b) => {
-        b.classList.toggle("active", b === btn);
-      });
-      updatePreview();
+      setSelectedSubject(btn.dataset.subject);
     });
   });
 
@@ -2024,8 +2058,11 @@
     }
 
     selectedStatsDay = todayKey();
-    selectedSubject = "國文";
+    setSelectedSubject("國文", { syncPreview: false });
     selectedPurpose = "電視";
+    document.querySelectorAll("#purposeSeg .seg-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.purpose === selectedPurpose);
+    });
     selectedFunding = Math.max(0, state.balance) > 0 ? "balance" : "prepaid";
     showTimerSetupUi();
     render();
@@ -2114,6 +2151,11 @@
     state.allowOvertimeEarn = keepOvertime;
     state.endSoundOn = keepSound;
     selectedStatsDay = todayKey();
+    setSelectedSubject("國文", { syncPreview: false });
+    selectedPurpose = "電視";
+    document.querySelectorAll("#purposeSeg .seg-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.purpose === selectedPurpose);
+    });
     selectedFunding = "prepaid";
     save();
     showTimerSetupUi();
@@ -2210,6 +2252,7 @@
 
   rollDayIfNeeded();
   selectedStatsDay = todayKey();
+  setSelectedSubject(resolveSelectedSubject(), { syncPreview: false });
   render();
   updatePreview();
   loadPendingEndAlert();

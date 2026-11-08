@@ -85,15 +85,15 @@
           <span class="mini-seal gold">記</span>
         </div>
         <form id="scoreForm" class="form panel">
-          <label>
-            選擇科目
-            <div class="seg" role="group" aria-label="科目">
-              <button type="button" class="seg-btn active" data-subject="國文">國文</button>
-              <button type="button" class="seg-btn" data-subject="數學">數學</button>
-              <button type="button" class="seg-btn" data-subject="英文">英文</button>
+          <div class="field">
+            <span class="field-label" id="subjectFieldLabel">選擇科目</span>
+            <div class="seg" id="subjectSeg" role="group" aria-labelledby="subjectFieldLabel">
+              <button type="button" class="seg-btn active" data-subject="國文" aria-pressed="true">國文</button>
+              <button type="button" class="seg-btn" data-subject="數學" aria-pressed="false">數學</button>
+              <button type="button" class="seg-btn" data-subject="英文" aria-pressed="false">英文</button>
             </div>
-            <input type="hidden" name="subject" id="subjectInput" value="國文" />
-          </label>
+            <input type="hidden" name="subject" id="subjectInput" value="國文" autocomplete="off" />
+          </div>
           <label>
             這次分數（0–100）
             <input type="number" name="score" id="scoreInput" min="0" max="100" inputmode="numeric" placeholder="例如 95" required />
