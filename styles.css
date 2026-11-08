@@ -223,7 +223,9 @@ h3 { font-family: var(--display); }
 .screen-banner.compact > div { flex: 1; }
 
 /* forms */
-.form label { display: block; margin-bottom: 15px; font-size: 0.9rem; font-weight: 700; color: var(--cream-dim); letter-spacing: 0.04em; }
+.form label,
+.form .field { display: block; margin-bottom: 15px; font-size: 0.9rem; font-weight: 700; color: var(--cream-dim); letter-spacing: 0.04em; }
+.form .field-label { display: block; }
 .form input[type="number"], .form input[type="text"], .timer-setup input[type="number"] {
   width: 100%; margin-top: 7px; padding: 14px 16px; border-radius: 16px;
   border: 1.5px solid var(--line-soft); background: rgba(12, 21, 38, 0.55);
