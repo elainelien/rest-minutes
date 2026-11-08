@@ -312,6 +312,48 @@
     return { value: state.balance, label: "剩餘可用", unit: "分", isDebt: false };
   }
 
+  /** Credit earned minutes against outstanding 預支 debt first; balance is the only debt source. */
+  function creditMinutesAgainstDebt(earned) {
+    const total = Math.max(0, Number(earned) || 0);
+    const debtBefore = debtMinutes();
+    const repaid = Math.min(debtBefore, total);
+    const credited = total - repaid;
+    state.balance += total;
+    return {
+      earned: total,
+      debtBefore,
+      repaid,
+      credited,
+      debtAfter: debtMinutes(),
+    };
+  }
+
+  function recentPrepaidLedger(limit = 5) {
+    return (state.ledger || [])
+      .filter((item) => item.kind === "manual_deduct")
+      .slice(0, limit);
+  }
+
+  function todayDebtRepaidFromLedger() {
+    const day = state.day || todayKey();
+    return (state.ledger || []).reduce((sum, item) => {
+      if (item.kind !== "earn") return sum;
+      const itemDay = item.dayKey || dayKeyFromIso(item.at);
+      if (itemDay !== day) return sum;
+      return sum + (Math.max(0, Number(item.repaid) || 0));
+    }, 0);
+  }
+
+  function debtRepaidForDay(day) {
+    if (day === state.day) return todayDebtRepaidFromLedger();
+    return (state.ledger || []).reduce((sum, item) => {
+      if (item.kind !== "earn") return sum;
+      const itemDay = item.dayKey || dayKeyFromIso(item.at);
+      if (itemDay !== day) return sum;
+      return sum + (Math.max(0, Number(item.repaid) || 0));
+    }, 0);
+  }
+
   function scoreToPoints(score) {
     const s = Number(score);
     if (!Number.isFinite(s) || s <= 84) return 0;
@@ -941,12 +983,21 @@
 
     const earned = stats.regular + stats.overtime + stats.bonus;
     const manual = stats.manualDeducted || 0;
+    const debtNow = debtMinutes();
+    const repaid = debtRepaidForDay(selectedStatsDay);
+    const isToday = selectedStatsDay === state.day;
     restEl.innerHTML =
       `<p>已賺休息 <strong>${earned}</strong> 分` +
       `（一般 ${stats.regular}＋超時 ${stats.overtime}＋加碼 ${stats.bonus}）</p>` +
       `<p>已兌換休息 <strong>${stats.redeemed}</strong> 分</p>` +
       (manual > 0
         ? `<p>手動扣除／預支 <strong>${manual}</strong> 分</p>`
+        : "") +
+      (repaid > 0
+        ? `<p>已抵扣預支 <strong>${repaid}</strong> 分</p>`
+        : "") +
+      (isToday && debtNow > 0
+        ? `<p class="stats-debt">目前尚欠預支 <strong>${debtNow}</strong> 分（與錢包同一筆餘額）</p>`
         : "");
   }
 
@@ -979,14 +1030,29 @@
     document.getElementById("timerAvail").textContent = Math.max(0, state.balance);
     updateCapCopy();
     renderStats();
+    renderPrepaidPanels();
 
     const hint = document.getElementById("homeHint");
     if (bal.isDebt) {
-      hint.textContent = `尚欠 ${bal.value} 分；記成績賺到的分鐘會先還債`;
+      hint.textContent = `尚欠預支 ${bal.value} 分；下次換點數會先自動抵扣`;
     } else if (state.balance > 0) {
       hint.textContent = "可以按「開始休息」，用計時表倒數使用";
     } else {
-      hint.textContent = "記康軒成績，讓月下狐火更亮";
+      hint.textContent = "記康軒成績，讓月下狐火更亮；也可由家長預支";
+    }
+
+    const timerDebtHint = document.getElementById("timerDebtHint");
+    if (timerDebtHint) {
+      if (bal.isDebt) {
+        timerDebtHint.hidden = false;
+        timerDebtHint.textContent = `目前尚欠預支 ${bal.value} 分。計時只用已有餘額；預支請走錢包「手動扣除／預支」。`;
+      } else if (state.balance <= 0) {
+        timerDebtHint.hidden = false;
+        timerDebtHint.textContent = "沒有可用分鐘時，請先記成績換點，或由家長在錢包預支。";
+      } else {
+        timerDebtHint.hidden = true;
+        timerDebtHint.textContent = "";
+      }
     }
 
     const caps = document.getElementById("subjectCaps");
@@ -1020,6 +1086,51 @@
       .replaceAll('"', "&quot;");
   }
 
+  function renderPrepaidPanels() {
+    const debt = debtMinutes();
+    const homePanel = document.getElementById("prepaidStatusPanel");
+    const homeSummary = document.getElementById("prepaidStatusSummary");
+    const homeHistory = document.getElementById("prepaidHistory");
+    const walletSummary = document.getElementById("walletPrepaidSummary");
+    const walletHistory = document.getElementById("walletPrepaidHistory");
+    const recent = recentPrepaidLedger(5);
+
+    const historyHtml = recent.length
+      ? `<ul class="prepaid-history">${recent
+          .map((item) => {
+            const when = new Date(item.at);
+            const time = `${when.getMonth() + 1}/${when.getDate()} ${String(when.getHours()).padStart(2, "0")}:${String(
+              when.getMinutes()
+            ).padStart(2, "0")}`;
+            const mins = Number(item.minutes) || Math.abs(Number(item.delta) || 0);
+            const note = item.note ? escapeHtml(String(item.note)) : "預支";
+            return `<li><span>${time} · ${note}</span><strong>${mins} 分</strong></li>`;
+          })
+          .join("")}</ul>`
+      : `<p class="hint tight prepaid-empty">尚無預支紀錄</p>`;
+
+    if (homeSummary) {
+      if (debt > 0) {
+        homeSummary.innerHTML = `目前尚欠預支 <strong>${debt}</strong> 分。下次記成績換點數時，會先自動抵扣，再把剩下的加入可用餘額。`;
+      } else {
+        homeSummary.innerHTML = `目前沒有預支欠額。家長可從錢包手動扣除；超過餘額就會變成「尚欠」。`;
+      }
+    }
+    if (homePanel) homePanel.classList.toggle("has-debt", debt > 0);
+    if (homeHistory) homeHistory.innerHTML = historyHtml;
+
+    const walletPanel = document.getElementById("deductPanel");
+    if (walletSummary) {
+      if (debt > 0) {
+        walletSummary.innerHTML = `尚欠預支 <strong>${debt}</strong> 分（與上方餘額同一筆；不是另計）。換點數入帳時會先還這筆。`;
+      } else {
+        walletSummary.innerHTML = `目前無欠額。扣除超過可用餘額時，會以負餘額記為預支。`;
+      }
+    }
+    if (walletPanel) walletPanel.classList.toggle("has-debt", debt > 0);
+    if (walletHistory) walletHistory.innerHTML = historyHtml;
+  }
+
   function updatePreview() {
     const score = Number(document.getElementById("scoreInput").value);
     const el = document.getElementById("scorePreview");
@@ -1046,6 +1157,12 @@
       text += `，滿分加碼 +${award.bonus} 分`;
     }
     text += `，合計 +${award.total} 分`;
+    const debt = debtMinutes();
+    if (debt > 0 && award.total > 0) {
+      const repaid = Math.min(debt, award.total);
+      const net = award.total - repaid;
+      text += `（先抵扣預支 ${repaid} 分，實得 ${net} 分）`;
+    }
     el.textContent = text;
   }
 
@@ -1151,7 +1268,7 @@
     state.todayRegular += award.regularGranted;
     state.todayOvertime = (state.todayOvertime || 0) + award.overtimeGranted;
     state.todayBonus += award.bonus;
-    state.balance += award.total;
+    const settle = creditMinutesAgainstDebt(award.total);
 
     const bucket = ensureDayBucket(state, state.day);
     bucket.scores[selectedSubject].push(score);
@@ -1167,6 +1284,8 @@
       regular: award.regularGranted,
       overtime: award.overtimeGranted,
       bonus: award.bonus,
+      repaid: settle.repaid,
+      credited: settle.credited,
       title: `${selectedSubject} ${score} 分`,
       detail: [
         unit || "康軒刷題",
@@ -1174,6 +1293,7 @@
         award.overtimeGranted ? `超時＋${award.overtimeGranted}` : null,
         award.bonus ? `滿分＋${award.bonus}` : null,
         award.hardCapped ? "已套用硬上限" : null,
+        settle.repaid > 0 ? `抵扣預支 ${settle.repaid} · 實得 ${settle.credited}` : null,
       ]
         .filter(Boolean)
         .join(" · "),
@@ -1188,17 +1308,25 @@
     render();
     if (award.total === 0) {
       showToast("logToast", "已記錄，但這次是 0 分休息（未達 85 或已達上限）", true);
-    } else if (award.softOvertime) {
+    } else if (settle.repaid > 0) {
       const bal = formatBalanceCopy();
-      const balText = bal.isDebt ? `尚欠 ${bal.value} 分` : `目前剩餘 ${bal.value} 分`;
+      const tail = bal.isDebt
+        ? `仍尚欠 ${bal.value} 分`
+        : `目前剩餘 ${bal.value} 分`;
+      const ot = award.softOvertime ? `（含超時 ${award.overtimeGranted}）` : "";
       showToast(
         "logToast",
-        `已入帳 +${award.total} 分鐘（含超時 ${award.overtimeGranted}）！${balText}`
+        `已抵扣預支 ${settle.repaid} 分，實得 ${settle.credited} 分${ot} · ${tail}`
+      );
+    } else if (award.softOvertime) {
+      const bal = formatBalanceCopy();
+      showToast(
+        "logToast",
+        `已入帳 +${award.total} 分鐘（含超時 ${award.overtimeGranted}）！目前剩餘 ${bal.value} 分`
       );
     } else {
       const bal = formatBalanceCopy();
-      const balText = bal.isDebt ? `尚欠 ${bal.value} 分` : `目前剩餘 ${bal.value} 分`;
-      showToast("logToast", `已入帳 +${award.total} 分鐘！${balText}`);
+      showToast("logToast", `已入帳 +${award.total} 分鐘！目前剩餘 ${bal.value} 分`);
     }
   }
 
@@ -1210,7 +1338,20 @@
       return;
     }
     if (state.balance <= 0) {
-      showToast("timerToast", "還沒有可休息的時間，先去記成績吧", true);
+      const debt = debtMinutes();
+      if (debt > 0) {
+        showToast(
+          "timerToast",
+          `尚欠預支 ${debt} 分；計時需有可用餘額。請先記成績還債，或由家長在錢包調整預支`,
+          true
+        );
+      } else {
+        showToast(
+          "timerToast",
+          "還沒有可休息時間；請先記成績，或由家長在錢包預支後再倒數",
+          true
+        );
+      }
       return;
     }
     const mins = Number(document.getElementById("timerMinutes").value);

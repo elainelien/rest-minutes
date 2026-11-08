@@ -265,6 +265,37 @@ h3 { font-family: var(--display); }
 .deduct-panel { margin-bottom: 14px; }
 .deduct-form { margin: 0; }
 .deduct-form .btn.block { margin-top: 2px; }
+.prepaid-summary {
+  margin: 0 0 10px; color: var(--cream-dim); font-size: 0.9rem; line-height: 1.55;
+}
+.prepaid-summary strong {
+  color: var(--gold-bright); font-family: var(--display); font-size: 1.05rem;
+}
+.prepaid-panel.has-debt,
+.deduct-panel.has-debt {
+  border-color: rgba(255, 176, 163, 0.35);
+}
+.prepaid-panel.has-debt .prepaid-summary strong,
+.deduct-panel.has-debt .prepaid-summary strong,
+.stats-debt strong {
+  color: var(--danger);
+}
+.prepaid-history-wrap { margin: 0 0 8px; }
+.prepaid-history {
+  list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px;
+}
+.prepaid-history li {
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+  padding: 8px 10px; border-radius: 12px;
+  background: rgba(12, 21, 38, 0.35); border: 1px solid var(--line-soft);
+  font-size: 0.82rem; color: var(--cream-dim);
+}
+.prepaid-history li strong {
+  font-family: var(--display); color: var(--danger); white-space: nowrap;
+}
+.prepaid-empty { margin: 0 0 6px !important; }
+.timer-debt-hint { color: var(--danger) !important; }
+.stats-debt { color: var(--danger); }
 .confirm-actions {
   display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; align-items: stretch;
 }

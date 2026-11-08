@@ -43,10 +43,11 @@
           <button type="button" class="btn primary" data-go="log">記成績<small>寫一筆</small></button>
           <button type="button" class="btn secondary" data-go="timer">開始休息<small>陪一會</small></button>
         </div>
-        <div class="panel deduct-teaser">
-          <div class="panel-head"><h3>家長扣除</h3><span class="mini-seal">預</span></div>
-          <p class="hint tight">預支休息時間時，可從錢包手動扣除；餘額可成「尚欠」。</p>
-          <button type="button" class="btn secondary block" data-go="wallet" data-focus-deduct="1">去錢包扣除<small>預支／手動</small></button>
+        <div class="panel deduct-teaser prepaid-panel" id="prepaidStatusPanel">
+          <div class="panel-head"><h3>預支狀況</h3><span class="mini-seal">預</span></div>
+          <p class="prepaid-summary" id="prepaidStatusSummary">目前沒有預支欠額。</p>
+          <div id="prepaidHistory" class="prepaid-history-wrap"></div>
+          <button type="button" class="btn secondary block" data-go="wallet" data-focus-deduct="1">去錢包預支／扣除<small>家長手動</small></button>
         </div>
         <div class="panel">
           <div class="panel-head"><h3>今日修煉</h3><span class="mini-seal">月</span></div>
@@ -126,7 +127,9 @@
         </div>
         <div class="panel deduct-panel" id="deductPanel">
           <div class="panel-head"><h3>手動扣除／預支</h3><span class="mini-seal gold">預</span></div>
-          <p class="hint tight">家長專用。若扣除超過餘額，會變成「尚欠」；之後記成績賺到的分鐘會先還債。</p>
+          <p class="prepaid-summary" id="walletPrepaidSummary">目前無欠額。</p>
+          <div id="walletPrepaidHistory" class="prepaid-history-wrap"></div>
+          <p class="hint tight">家長專用。若扣除超過餘額，會變成「尚欠」；之後記成績換點數入帳時會先自動抵扣預支，再把剩下的加入可用餘額。</p>
           <form id="deductForm" class="form deduct-form">
             <label>
               扣除幾分鐘
@@ -158,6 +161,7 @@
         <div class="timer-setup panel" id="timerSetup">
           <div class="timer-setup-art"><img src="assets/fox-moon.webp" alt="" aria-hidden="true" /></div>
           <p class="hint">用賺到的時間倒數。剩餘 <strong id="timerAvail">0</strong> 分</p>
+          <p class="hint tight timer-debt-hint" id="timerDebtHint" hidden></p>
           <label>
             這次要用幾分鐘
             <input type="number" id="timerMinutes" min="1" inputmode="numeric" />
