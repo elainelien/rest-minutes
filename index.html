@@ -47,7 +47,10 @@
           <div class="panel-head"><h3>預支狀況</h3><span class="mini-seal">預</span></div>
           <p class="prepaid-summary" id="prepaidStatusSummary">目前沒有預支欠額。</p>
           <div id="prepaidHistory" class="prepaid-history-wrap"></div>
-          <button type="button" class="btn secondary block" data-go="wallet" data-focus-deduct="1">去錢包預支／扣除<small>家長手動</small></button>
+          <div class="prepaid-actions">
+            <button type="button" class="btn primary block" data-go="timer" data-focus-prepaid="1">預支休息計時<small>倒數時預支</small></button>
+            <button type="button" class="btn secondary block" data-go="wallet" data-focus-deduct="1">錢包手動扣除<small>不跑計時</small></button>
+          </div>
         </div>
         <div class="panel">
           <div class="panel-head"><h3>今日修煉</h3><span class="mini-seal">月</span></div>
@@ -129,7 +132,7 @@
           <div class="panel-head"><h3>手動扣除／預支</h3><span class="mini-seal gold">預</span></div>
           <p class="prepaid-summary" id="walletPrepaidSummary">目前無欠額。</p>
           <div id="walletPrepaidHistory" class="prepaid-history-wrap"></div>
-          <p class="hint tight">家長專用。若扣除超過餘額，會變成「尚欠」；之後記成績換點數入帳時會先自動抵扣預支，再把剩下的加入可用餘額。</p>
+          <p class="hint tight">家長專用，可不跑計時直接調欠額。計時頁的「預支休息」也會寫入同一筆預支；換點數入帳時會先自動抵扣。</p>
           <form id="deductForm" class="form deduct-form">
             <label>
               扣除幾分鐘
@@ -160,8 +163,15 @@
         </div>
         <div class="timer-setup panel" id="timerSetup">
           <div class="timer-setup-art"><img src="assets/fox-moon.webp" alt="" aria-hidden="true" /></div>
-          <p class="hint">用賺到的時間倒數。剩餘 <strong id="timerAvail">0</strong> 分</p>
+          <p class="hint" id="timerFundingHint">用賺到的時間倒數。剩餘 <strong id="timerAvail">0</strong> 分</p>
           <p class="hint tight timer-debt-hint" id="timerDebtHint" hidden></p>
+          <label id="timerFundingLabel">
+            休息怎麼扣
+            <div class="seg" id="fundingSeg" role="group" aria-label="計時扣款方式">
+              <button type="button" class="seg-btn active" data-funding="balance" id="fundingBalanceBtn">用餘額</button>
+              <button type="button" class="seg-btn" data-funding="prepaid" id="fundingPrepaidBtn">預支休息</button>
+            </div>
+          </label>
           <label>
             這次要用幾分鐘
             <input type="number" id="timerMinutes" min="1" inputmode="numeric" />
@@ -178,6 +188,7 @@
         </div>
         <div class="timer-run panel" id="timerRun" hidden>
           <p class="purpose-tag" id="purposeTag">電視</p>
+          <p class="prepaid-run-tag" id="prepaidRunTag" hidden>預支休息中</p>
           <div class="ring-wrap" aria-hidden="true">
             <svg class="ring" viewBox="0 0 260 260" width="260" height="260">
               <circle cx="130" cy="130" r="112" fill="none" stroke="rgba(143,176,217,.25)" stroke-width="12" />
@@ -265,6 +276,20 @@
       <div class="confirm-actions">
         <button type="button" class="btn secondary" id="deductConfirmCancel">取消</button>
         <button type="button" class="btn primary" id="deductConfirmOk">確定扣除<small>寫入流水</small></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="end-alert" id="prepaidTimerConfirm" hidden role="dialog" aria-modal="true" aria-labelledby="prepaidTimerConfirmTitle">
+    <div class="end-alert-backdrop" id="prepaidTimerConfirmBackdrop"></div>
+    <div class="end-alert-card">
+      <span class="mini-seal gold" aria-hidden="true">預</span>
+      <h2 id="prepaidTimerConfirmTitle">確認預支休息？</h2>
+      <p class="end-alert-body" id="prepaidTimerConfirmBody">將以預支方式開始倒數。</p>
+      <p class="end-alert-meta" id="prepaidTimerConfirmMeta"></p>
+      <div class="confirm-actions">
+        <button type="button" class="btn secondary" id="prepaidTimerConfirmCancel">取消</button>
+        <button type="button" class="btn primary" id="prepaidTimerConfirmOk">開始預支休息<small>先入帳再倒數</small></button>
       </div>
     </div>
   </div>

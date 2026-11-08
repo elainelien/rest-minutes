@@ -11,6 +11,7 @@
   const PERFECT_BONUS = 5;
   const LEDGER_LIMIT = 200;
   const DAY_HISTORY_LIMIT = 45;
+  const PREPAID_TIMER_MAX = 180;
 
   const defaultState = () => ({
     balance: 0,
@@ -28,10 +29,12 @@
   });
 
   let pendingDeduct = null;
+  let pendingPrepaidTimer = null;
 
   let state = load();
   let selectedSubject = "國文";
   let selectedPurpose = "電視";
+  let selectedFunding = "balance"; // "balance" | "prepaid"
   let selectedStatsDay = todayKey();
   let timer = {
     running: false,
@@ -42,6 +45,8 @@
     purpose: "電視",
     sessionId: null,
     intervalId: null,
+    prepaid: false,
+    prepaidCharged: 0,
   };
   let finishing = false;
   let audioCtx = null;
@@ -107,8 +112,14 @@
         startedWithMs: timer.startedWithMs,
         purpose: timer.purpose,
         sessionId: timer.sessionId,
+        prepaid: Boolean(timer.prepaid),
+        prepaidCharged: Number(timer.prepaidCharged) || 0,
       })
     );
+  }
+
+  function isPrepaidDebtKind(kind) {
+    return kind === "manual_deduct" || kind === "prepaid_timer";
   }
 
   function clearPersistedTimer() {
@@ -222,8 +233,13 @@
         bucket.bonus += Number(item.bonus) || 0;
       } else if (item.kind === "redeem") {
         bucket.redeemed += Number(item.minutes) || Math.abs(Number(item.delta) || 0);
-      } else if (item.kind === "manual_deduct") {
+      } else if (isPrepaidDebtKind(item.kind)) {
         bucket.manualDeducted += Number(item.minutes) || Math.abs(Number(item.delta) || 0);
+      } else if (item.kind === "prepaid_timer_refund") {
+        bucket.manualDeducted = Math.max(
+          0,
+          bucket.manualDeducted - (Number(item.minutes) || Math.abs(Number(item.delta) || 0))
+        );
       }
     });
 
@@ -330,8 +346,97 @@
 
   function recentPrepaidLedger(limit = 5) {
     return (state.ledger || [])
-      .filter((item) => item.kind === "manual_deduct")
+      .filter((item) => isPrepaidDebtKind(item.kind) || item.kind === "prepaid_timer_refund")
       .slice(0, limit);
+  }
+
+  function syncFundingModeButtons() {
+    const balanceBtn = document.getElementById("fundingBalanceBtn");
+    const prepaidBtn = document.getElementById("fundingPrepaidBtn");
+    const usable = Math.max(0, state.balance);
+    if (usable <= 0) {
+      selectedFunding = "prepaid";
+    }
+    if (balanceBtn) {
+      balanceBtn.disabled = usable <= 0;
+      balanceBtn.classList.toggle("active", selectedFunding === "balance");
+      balanceBtn.setAttribute("aria-pressed", selectedFunding === "balance" ? "true" : "false");
+    }
+    if (prepaidBtn) {
+      prepaidBtn.classList.toggle("active", selectedFunding === "prepaid");
+      prepaidBtn.setAttribute("aria-pressed", selectedFunding === "prepaid" ? "true" : "false");
+    }
+  }
+
+  function updateTimerSetupCopy() {
+    const setup = document.getElementById("timerSetup");
+    const hint = document.getElementById("timerFundingHint");
+    const debtHint = document.getElementById("timerDebtHint");
+    const startBtn = document.getElementById("startTimerBtn");
+    const input = document.getElementById("timerMinutes");
+    const usable = Math.max(0, state.balance);
+    const debt = debtMinutes();
+    const prepaidMode = selectedFunding === "prepaid";
+
+    if (setup) setup.classList.toggle("is-prepaid-mode", prepaidMode);
+
+    if (hint) {
+      if (prepaidMode) {
+        hint.innerHTML = `預支模式：先把這次分鐘記成欠額再倒數。目前可用 <strong id="timerAvail">${usable}</strong> 分`;
+      } else {
+        hint.innerHTML = `用賺到的時間倒數。剩餘 <strong id="timerAvail">${usable}</strong> 分`;
+      }
+    } else {
+      const availEl = document.getElementById("timerAvail");
+      if (availEl) availEl.textContent = String(usable);
+    }
+
+    if (debtHint) {
+      if (prepaidMode) {
+        debtHint.hidden = false;
+        debtHint.textContent =
+          debt > 0
+            ? `目前尚欠 ${debt} 分；提早結束只會留下實際用掉的預支。`
+            : `沒有可用餘額也能開始；確認後會寫入預支流水。`;
+      } else if (debt > 0) {
+        debtHint.hidden = false;
+        debtHint.textContent = `目前尚欠預支 ${debt} 分。可用餘額時走「用餘額」；要再預支請改選「預支休息」。`;
+      } else if (usable <= 0) {
+        debtHint.hidden = false;
+        debtHint.textContent = "沒有可用分鐘時，請改選「預支休息」，或先去記成績換點。";
+      } else {
+        debtHint.hidden = true;
+        debtHint.textContent = "";
+      }
+    }
+
+    if (startBtn) {
+      if (prepaidMode) {
+        startBtn.innerHTML = `開始預支休息<small>確認後倒數</small>`;
+      } else {
+        startBtn.innerHTML = `開始倒數<small>月亮開始走</small>`;
+      }
+    }
+
+    if (input && !timer.running && !timer.paused) {
+      if (prepaidMode) {
+        input.max = String(PREPAID_TIMER_MAX);
+        const current = Number(input.value);
+        if (!Number.isFinite(current) || current < 1) {
+          input.value = "10";
+        } else if (current > PREPAID_TIMER_MAX) {
+          input.value = String(PREPAID_TIMER_MAX);
+        }
+      } else {
+        input.max = String(Math.max(1, usable || 1));
+        const current = Number(input.value);
+        if (!Number.isFinite(current) || current < 1) {
+          input.value = String(Math.max(1, usable || 1));
+        } else if (usable > 0 && current > usable) {
+          input.value = String(usable);
+        }
+      }
+    }
   }
 
   function todayDebtRepaidFromLedger() {
@@ -420,6 +525,13 @@
     document.getElementById("timerSetup").hidden = true;
     document.getElementById("timerRun").hidden = false;
     document.getElementById("purposeTag").textContent = `用途：${timer.purpose}`;
+    const prepaidTag = document.getElementById("prepaidRunTag");
+    if (prepaidTag) {
+      prepaidTag.hidden = !timer.prepaid;
+      prepaidTag.textContent = timer.prepaid
+        ? `預支休息中 · 已先入帳 ${timer.prepaidCharged || 0} 分`
+        : "";
+    }
     document.getElementById("pauseTimerBtn").textContent = timer.paused ? "繼續" : "暫停";
     updateCountdownDisplay();
   }
@@ -860,11 +972,21 @@
       el.classList.toggle("active", el.dataset.go === screen);
     });
     if (screen === "timer") {
-      const input = document.getElementById("timerMinutes");
       if (!timer.running && !timer.paused) {
+        if (options.focusPrepaid || Math.max(0, state.balance) <= 0) {
+          selectedFunding = "prepaid";
+        } else if (selectedFunding !== "prepaid") {
+          selectedFunding = "balance";
+        }
+        const input = document.getElementById("timerMinutes");
         const avail = Math.max(0, state.balance);
-        input.value = Math.max(1, avail || 1);
-        input.max = Math.max(1, avail || 1);
+        if (selectedFunding === "prepaid") {
+          input.value = input.value && Number(input.value) >= 1 ? input.value : "10";
+          input.max = PREPAID_TIMER_MAX;
+        } else {
+          input.value = Math.max(1, avail || 1);
+          input.max = Math.max(1, avail || 1);
+        }
       }
       syncFromWallClock();
     }
@@ -878,6 +1000,10 @@
       if (minutesInput) {
         setTimeout(() => minutesInput.focus(), 180);
       }
+    }
+    if (screen === "timer" && options.focusPrepaid && !timer.running && !timer.paused) {
+      const input = document.getElementById("timerMinutes");
+      if (input) setTimeout(() => input.focus(), 180);
     }
   }
 
@@ -991,7 +1117,7 @@
       `（一般 ${stats.regular}＋超時 ${stats.overtime}＋加碼 ${stats.bonus}）</p>` +
       `<p>已兌換休息 <strong>${stats.redeemed}</strong> 分</p>` +
       (manual > 0
-        ? `<p>手動扣除／預支 <strong>${manual}</strong> 分</p>`
+        ? `<p>預支／扣除 <strong>${manual}</strong> 分</p>`
         : "") +
       (repaid > 0
         ? `<p>已抵扣預支 <strong>${repaid}</strong> 分</p>`
@@ -1027,7 +1153,8 @@
 
     document.getElementById("walletTodayRegular").textContent = state.todayRegular;
     document.getElementById("walletTodayBonus").textContent = state.todayBonus;
-    document.getElementById("timerAvail").textContent = Math.max(0, state.balance);
+    syncFundingModeButtons();
+    updateTimerSetupCopy();
     updateCapCopy();
     renderStats();
     renderPrepaidPanels();
@@ -1038,21 +1165,7 @@
     } else if (state.balance > 0) {
       hint.textContent = "可以按「開始休息」，用計時表倒數使用";
     } else {
-      hint.textContent = "記康軒成績，讓月下狐火更亮；也可由家長預支";
-    }
-
-    const timerDebtHint = document.getElementById("timerDebtHint");
-    if (timerDebtHint) {
-      if (bal.isDebt) {
-        timerDebtHint.hidden = false;
-        timerDebtHint.textContent = `目前尚欠預支 ${bal.value} 分。計時只用已有餘額；預支請走錢包「手動扣除／預支」。`;
-      } else if (state.balance <= 0) {
-        timerDebtHint.hidden = false;
-        timerDebtHint.textContent = "沒有可用分鐘時，請先記成績換點，或由家長在錢包預支。";
-      } else {
-        timerDebtHint.hidden = true;
-        timerDebtHint.textContent = "";
-      }
+      hint.textContent = "記康軒成績，或到計時頁用「預支休息」";
     }
 
     const caps = document.getElementById("subjectCaps");
@@ -1103,17 +1216,26 @@
               when.getMinutes()
             ).padStart(2, "0")}`;
             const mins = Number(item.minutes) || Math.abs(Number(item.delta) || 0);
-            const note = item.note ? escapeHtml(String(item.note)) : "預支";
-            return `<li><span>${time} · ${note}</span><strong>${mins} 分</strong></li>`;
+            const isRefund = item.kind === "prepaid_timer_refund";
+            const source = isRefund
+              ? "預支退回"
+              : item.kind === "prepaid_timer"
+                ? "計時預支"
+                : item.note
+                  ? escapeHtml(String(item.note))
+                  : "手動預支";
+            const strongCls = isRefund ? " is-refund" : "";
+            const amount = isRefund ? `−${mins} 分` : `${mins} 分`;
+            return `<li><span>${time} · ${source}</span><strong class="${strongCls.trim()}">${amount}</strong></li>`;
           })
           .join("")}</ul>`
       : `<p class="hint tight prepaid-empty">尚無預支紀錄</p>`;
 
     if (homeSummary) {
       if (debt > 0) {
-        homeSummary.innerHTML = `目前尚欠預支 <strong>${debt}</strong> 分。下次記成績換點數時，會先自動抵扣，再把剩下的加入可用餘額。`;
+        homeSummary.innerHTML = `目前尚欠預支 <strong>${debt}</strong> 分。可用計時「預支休息」或錢包手動扣除；下次換點數會先自動抵扣。`;
       } else {
-        homeSummary.innerHTML = `目前沒有預支欠額。家長可從錢包手動扣除；超過餘額就會變成「尚欠」。`;
+        homeSummary.innerHTML = `目前沒有預支欠額。可到計時選「預支休息」，或從錢包手動扣除。`;
       }
     }
     if (homePanel) homePanel.classList.toggle("has-debt", debt > 0);
@@ -1122,9 +1244,9 @@
     const walletPanel = document.getElementById("deductPanel");
     if (walletSummary) {
       if (debt > 0) {
-        walletSummary.innerHTML = `尚欠預支 <strong>${debt}</strong> 分（與上方餘額同一筆；不是另計）。換點數入帳時會先還這筆。`;
+        walletSummary.innerHTML = `尚欠預支 <strong>${debt}</strong> 分（計時預支與手動扣除同一筆餘額）。換點數入帳時會先還這筆。`;
       } else {
-        walletSummary.innerHTML = `目前無欠額。扣除超過可用餘額時，會以負餘額記為預支。`;
+        walletSummary.innerHTML = `目前無欠額。計時預支或手動扣除超過可用餘額時，會以負餘額記為預支。`;
       }
     }
     if (walletPanel) walletPanel.classList.toggle("has-debt", debt > 0);
@@ -1330,39 +1452,30 @@
     }
   }
 
-  function startTimer() {
-    rollDayIfNeeded();
-    unlockAudio();
-    if (timer.running || timer.paused) {
-      showToast("timerToast", "休息計時進行中", true);
-      return;
+  function hidePrepaidTimerConfirm() {
+    const el = document.getElementById("prepaidTimerConfirm");
+    if (el) el.hidden = true;
+    pendingPrepaidTimer = null;
+  }
+
+  function showPrepaidTimerConfirm(minutes) {
+    pendingPrepaidTimer = { minutes, purpose: selectedPurpose };
+    const after = state.balance - minutes;
+    const body = document.getElementById("prepaidTimerConfirmBody");
+    const meta = document.getElementById("prepaidTimerConfirmMeta");
+    const dialog = document.getElementById("prepaidTimerConfirm");
+    if (!body || !meta || !dialog) return;
+
+    body.textContent = `將預支 ${minutes} 分（用途：${selectedPurpose}）。提早結束只會留下實際用掉的分鐘。`;
+    if (after < 0) {
+      meta.textContent = `目前 ${state.balance} 分 → 結束後尚欠約 ${Math.abs(after)} 分`;
+    } else {
+      meta.textContent = `目前 ${state.balance} 分 → 結束後剩餘約 ${after} 分`;
     }
-    if (state.balance <= 0) {
-      const debt = debtMinutes();
-      if (debt > 0) {
-        showToast(
-          "timerToast",
-          `尚欠預支 ${debt} 分；計時需有可用餘額。請先記成績還債，或由家長在錢包調整預支`,
-          true
-        );
-      } else {
-        showToast(
-          "timerToast",
-          "還沒有可休息時間；請先記成績，或由家長在錢包預支後再倒數",
-          true
-        );
-      }
-      return;
-    }
-    const mins = Number(document.getElementById("timerMinutes").value);
-    if (!Number.isFinite(mins) || mins < 1) {
-      showToast("timerToast", "請輸入至少 1 分鐘", true);
-      return;
-    }
-    if (mins > state.balance) {
-      showToast("timerToast", `最多只能用 ${state.balance} 分`, true);
-      return;
-    }
+    dialog.hidden = false;
+  }
+
+  function beginTimerSession({ mins, prepaid, prepaidCharged }) {
     timer.purpose = selectedPurpose;
     timer.sessionId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     timer.startedWithMs = Math.round(mins * 60) * 1000;
@@ -1370,6 +1483,8 @@
     timer.endAt = Date.now() + timer.remainingMs;
     timer.running = true;
     timer.paused = false;
+    timer.prepaid = Boolean(prepaid);
+    timer.prepaidCharged = prepaid ? Number(prepaidCharged) || mins : 0;
     // New session clears prior end-alert ack state only when starting fresh.
     if (endAlert.acked || !endAlert.id) {
       endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
@@ -1380,6 +1495,86 @@
     showTimerRunUi();
     startTickInterval();
     syncFromWallClock();
+  }
+
+  function applyPrepaidTimerStart() {
+    if (!pendingPrepaidTimer) return;
+    const { minutes, purpose } = pendingPrepaidTimer;
+    rollDayIfNeeded();
+    if (timer.running || timer.paused) {
+      hidePrepaidTimerConfirm();
+      showToast("timerToast", "休息計時進行中", true);
+      return;
+    }
+
+    selectedPurpose = purpose || selectedPurpose;
+    state.balance -= minutes;
+    state.todayManualDeducted = (state.todayManualDeducted || 0) + minutes;
+    const bucket = ensureDayBucket(state, state.day);
+    bucket.manualDeducted = state.todayManualDeducted;
+
+    addLedger({
+      kind: "prepaid_timer",
+      minutes,
+      note: "計時預支",
+      purpose: selectedPurpose,
+      title: "預支休息計時",
+      detail: `${selectedPurpose} · 預支 ${minutes} 分`,
+      delta: -minutes,
+    });
+    pruneDayHistory(state);
+    save();
+    selectedStatsDay = state.day;
+    hidePrepaidTimerConfirm();
+
+    beginTimerSession({ mins: minutes, prepaid: true, prepaidCharged: minutes });
+    render();
+
+    const bal = formatBalanceCopy();
+    if (bal.isDebt) {
+      showToast("timerToast", `已預支 ${minutes} 分 · 尚欠 ${bal.value} 分`, true);
+    } else {
+      showToast("timerToast", `已預支 ${minutes} 分 · 剩餘 ${bal.value} 分`);
+    }
+  }
+
+  function startTimer() {
+    rollDayIfNeeded();
+    unlockAudio();
+    if (timer.running || timer.paused) {
+      showToast("timerToast", "休息計時進行中", true);
+      return;
+    }
+
+    syncFundingModeButtons();
+    const prepaidMode = selectedFunding === "prepaid";
+    const mins = Number(document.getElementById("timerMinutes").value);
+    if (!Number.isFinite(mins) || !Number.isInteger(mins) || mins < 1) {
+      showToast("timerToast", "請輸入至少 1 的整數分鐘", true);
+      return;
+    }
+
+    if (prepaidMode) {
+      if (mins > PREPAID_TIMER_MAX) {
+        showToast("timerToast", `預支休息一次最多 ${PREPAID_TIMER_MAX} 分`, true);
+        return;
+      }
+      showPrepaidTimerConfirm(mins);
+      return;
+    }
+
+    if (state.balance <= 0) {
+      selectedFunding = "prepaid";
+      updateTimerSetupCopy();
+      showToast("timerToast", "沒有可用餘額，已切到預支休息；確認後即可倒數", true);
+      return;
+    }
+    if (mins > state.balance) {
+      showToast("timerToast", `最多只能用 ${state.balance} 分`, true);
+      return;
+    }
+
+    beginTimerSession({ mins, prepaid: false, prepaidCharged: 0 });
   }
 
   function pauseTimer() {
@@ -1415,6 +1610,8 @@
       const startedWithMs = timer.startedWithMs;
       const purpose = timer.purpose;
       const sessionId = timer.sessionId || `${Date.now()}-ended`;
+      const wasPrepaid = Boolean(timer.prepaid);
+      const prepaidCharged = Math.max(0, Number(timer.prepaidCharged) || 0);
 
       clearTickInterval();
       timer.running = false;
@@ -1423,35 +1620,86 @@
       timer.remainingMs = 0;
       timer.startedWithMs = 0;
       timer.sessionId = null;
+      timer.prepaid = false;
+      timer.prepaidCharged = 0;
       clearPersistedTimer();
 
       const usedMs = Math.max(0, startedWithMs - remainingMs);
       const usedMin = usedMs <= 0 ? 0 : Math.max(1, Math.ceil(usedMs / 60000));
-      // Allow charge even when balance briefly races; floor at 0 for normal redeem.
-      const charge = usedMs <= 0 ? 0 : Math.min(Math.max(0, state.balance), usedMin);
-      if (charge > 0) {
-        state.balance -= charge;
-        state.todayRedeemed = (state.todayRedeemed || 0) + charge;
-        const bucket = ensureDayBucket(state, state.day);
-        bucket.redeemed = state.todayRedeemed;
-        addLedger({
-          kind: "redeem",
-          minutes: charge,
-          purpose,
-          title: completed ? "休息時間到" : "結束休息",
-          detail: `${purpose} · 用了 ${charge} 分`,
-          delta: -charge,
-        });
-        pruneDayHistory(state);
-        save();
+      let charge = 0;
+      let refund = 0;
+
+      if (wasPrepaid) {
+        // Prepaid was charged at start; keep only minutes actually used.
+        const actualUsed = usedMs <= 0 ? 0 : Math.min(prepaidCharged, usedMin);
+        refund = Math.max(0, prepaidCharged - actualUsed);
+        charge = actualUsed;
+        if (refund > 0) {
+          state.balance += refund;
+          state.todayManualDeducted = Math.max(0, (state.todayManualDeducted || 0) - refund);
+          const bucket = ensureDayBucket(state, state.day);
+          bucket.manualDeducted = state.todayManualDeducted;
+          addLedger({
+            kind: "prepaid_timer_refund",
+            minutes: refund,
+            purpose,
+            title: "預支未用退回",
+            detail: `${purpose} · 退回 ${refund} 分（實用 ${actualUsed}／原預支 ${prepaidCharged}）`,
+            delta: refund,
+          });
+          pruneDayHistory(state);
+          save();
+        } else {
+          save();
+        }
+      } else {
+        // Allow charge even when balance briefly races; floor at 0 for normal redeem.
+        charge = usedMs <= 0 ? 0 : Math.min(Math.max(0, state.balance), usedMin);
+        if (charge > 0) {
+          state.balance -= charge;
+          state.todayRedeemed = (state.todayRedeemed || 0) + charge;
+          const bucket = ensureDayBucket(state, state.day);
+          bucket.redeemed = state.todayRedeemed;
+          addLedger({
+            kind: "redeem",
+            minutes: charge,
+            purpose,
+            title: completed ? "休息時間到" : "結束休息",
+            detail: `${purpose} · 用了 ${charge} 分`,
+            delta: -charge,
+          });
+          pruneDayHistory(state);
+          save();
+        }
       }
 
       showTimerSetupUi();
       render();
-      showToast(
-        "timerToast",
-        completed ? `休息時間到！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
-      );
+      if (wasPrepaid) {
+        const bal = formatBalanceCopy();
+        const debtText = bal.isDebt ? `尚欠 ${bal.value} 分` : `剩餘 ${bal.value} 分`;
+        if (refund > 0) {
+          showToast(
+            "timerToast",
+            completed
+              ? `休息時間到！預支實用 ${charge} 分，退回 ${refund} 分 · ${debtText}`
+              : `已結束，預支實用 ${charge} 分，退回 ${refund} 分 · ${debtText}`
+          );
+        } else {
+          showToast(
+            "timerToast",
+            completed
+              ? `休息時間到！預支 ${charge} 分 · ${debtText}`
+              : `已結束，預支 ${charge} 分 · ${debtText}`,
+            bal.isDebt
+          );
+        }
+      } else {
+        showToast(
+          "timerToast",
+          completed ? `休息時間到！已扣除 ${charge} 分` : `已結束，扣除 ${charge} 分`
+        );
+      }
       if (completed) {
         fireRestEndAlert({ id: sessionId, charge, purpose });
       }
@@ -1470,6 +1718,8 @@
     timer.endAt = saved.endAt == null ? null : Number(saved.endAt);
     timer.running = Boolean(saved.running) && timer.endAt != null;
     timer.paused = Boolean(saved.paused) && !timer.running;
+    timer.prepaid = Boolean(saved.prepaid);
+    timer.prepaidCharged = Math.max(0, Number(saved.prepaidCharged) || 0);
     if (!timer.running && !timer.paused) {
       clearPersistedTimer();
       return false;
@@ -1478,6 +1728,7 @@
       timer.remainingMs = Math.max(0, timer.endAt - Date.now());
     }
     selectedPurpose = timer.purpose;
+    if (timer.prepaid) selectedFunding = "prepaid";
     showTimerRunUi();
     go("timer");
     if (timer.running) {
@@ -1490,7 +1741,10 @@
   // Events
   document.querySelectorAll("[data-go]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      go(btn.dataset.go, { focusDeduct: btn.dataset.focusDeduct === "1" });
+      go(btn.dataset.go, {
+        focusDeduct: btn.dataset.focusDeduct === "1",
+        focusPrepaid: btn.dataset.focusPrepaid === "1",
+      });
     });
   });
 
@@ -1498,6 +1752,21 @@
   document.getElementById("deductConfirmOk").addEventListener("click", applyManualDeduct);
   document.getElementById("deductConfirmCancel").addEventListener("click", hideDeductConfirm);
   document.getElementById("deductConfirmBackdrop").addEventListener("click", hideDeductConfirm);
+  document.getElementById("prepaidTimerConfirmOk").addEventListener("click", applyPrepaidTimerStart);
+  document.getElementById("prepaidTimerConfirmCancel").addEventListener("click", hidePrepaidTimerConfirm);
+  document.getElementById("prepaidTimerConfirmBackdrop").addEventListener("click", hidePrepaidTimerConfirm);
+
+  document.querySelectorAll("#fundingSeg .seg-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      const mode = btn.dataset.funding;
+      if (mode !== "balance" && mode !== "prepaid") return;
+      if (mode === "balance" && Math.max(0, state.balance) <= 0) return;
+      selectedFunding = mode;
+      updateTimerSetupCopy();
+      syncFundingModeButtons();
+    });
+  });
 
   document.querySelectorAll(".seg-btn[data-subject]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1542,6 +1811,11 @@
   document.getElementById("endAlertBackdrop").addEventListener("click", acknowledgeEndAlert);
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
+    const prepaidDialog = document.getElementById("prepaidTimerConfirm");
+    if (prepaidDialog && !prepaidDialog.hidden) {
+      hidePrepaidTimerConfirm();
+      return;
+    }
     const deductDialog = document.getElementById("deductConfirm");
     if (deductDialog && !deductDialog.hidden) {
       hideDeductConfirm();
@@ -1576,6 +1850,8 @@
         startedWithMs: timer.startedWithMs,
         purpose: timer.purpose,
         sessionId: timer.sessionId,
+        prepaid: Boolean(timer.prepaid),
+        prepaidCharged: Number(timer.prepaidCharged) || 0,
       };
     } else {
       timerSnapshot = loadPersistedTimer();
@@ -1693,11 +1969,15 @@
       purpose: "電視",
       sessionId: null,
       intervalId: null,
+      prepaid: false,
+      prepaidCharged: 0,
     };
     clearPersistedTimer();
     endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
     clearPersistedEndAlert();
     hideEndAlertUi();
+    hidePrepaidTimerConfirm();
+    hideDeductConfirm();
 
     const merged = { ...defaultState(), ...parsed.state };
     if (!merged.dayHistory || typeof merged.dayHistory !== "object") merged.dayHistory = {};
@@ -1730,7 +2010,14 @@
 
     if (parsed.timer && isPlainObject(parsed.timer) && parsed.timer.startedWithMs) {
       try {
-        localStorage.setItem(TIMER_KEY, JSON.stringify(parsed.timer));
+        localStorage.setItem(
+          TIMER_KEY,
+          JSON.stringify({
+            ...parsed.timer,
+            prepaid: Boolean(parsed.timer.prepaid),
+            prepaidCharged: Number(parsed.timer.prepaidCharged) || 0,
+          })
+        );
       } catch {
         // ignore
       }
@@ -1739,6 +2026,7 @@
     selectedStatsDay = todayKey();
     selectedSubject = "國文";
     selectedPurpose = "電視";
+    selectedFunding = Math.max(0, state.balance) > 0 ? "balance" : "prepaid";
     showTimerSetupUi();
     render();
     updatePreview();
@@ -1811,17 +2099,22 @@
       purpose: "電視",
       sessionId: null,
       intervalId: null,
+      prepaid: false,
+      prepaidCharged: 0,
     };
     clearPersistedTimer();
     endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
     persistEndAlert();
     hideEndAlertUi();
+    hidePrepaidTimerConfirm();
+    hideDeductConfirm();
     const keepOvertime = state.allowOvertimeEarn !== false;
     const keepSound = state.endSoundOn !== false;
     state = defaultState();
     state.allowOvertimeEarn = keepOvertime;
     state.endSoundOn = keepSound;
     selectedStatsDay = todayKey();
+    selectedFunding = "prepaid";
     save();
     showTimerSetupUi();
     render();
@@ -1843,14 +2136,56 @@
   window.addEventListener("xuxu-rest-force-end", () => {
     if (timer.running || timer.paused) finishTimer(true);
   });
-  // Test / automation hook: start an N-second rest (requires balance).
+  // Test / automation hook: start an N-second rest.
+  // detail.prepaid=true allows starting with 預支 even when balance <= 0.
   window.addEventListener("xuxu-rest-start-seconds", (event) => {
     const seconds = Number(event?.detail?.seconds);
+    const wantPrepaid = Boolean(event?.detail?.prepaid);
     if (!Number.isFinite(seconds) || seconds <= 0) return;
     unlockAudio();
     if (timer.running || timer.paused) return;
-    if (state.balance <= 0) return;
     const minsNeeded = Math.max(1, Math.ceil(seconds / 60));
+    if (wantPrepaid || selectedFunding === "prepaid" || state.balance <= 0) {
+      if (minsNeeded > PREPAID_TIMER_MAX) return;
+      rollDayIfNeeded();
+      state.balance -= minsNeeded;
+      state.todayManualDeducted = (state.todayManualDeducted || 0) + minsNeeded;
+      const bucket = ensureDayBucket(state, state.day);
+      bucket.manualDeducted = state.todayManualDeducted;
+      addLedger({
+        kind: "prepaid_timer",
+        minutes: minsNeeded,
+        note: "計時預支",
+        purpose: selectedPurpose,
+        title: "預支休息計時",
+        detail: `${selectedPurpose} · 預支 ${minsNeeded} 分`,
+        delta: -minsNeeded,
+      });
+      pruneDayHistory(state);
+      save();
+      selectedFunding = "prepaid";
+      timer.purpose = selectedPurpose;
+      timer.sessionId = `${Date.now()}-sec-${Math.random().toString(16).slice(2)}`;
+      timer.startedWithMs = Math.round(seconds * 1000);
+      timer.remainingMs = timer.startedWithMs;
+      timer.endAt = Date.now() + timer.remainingMs;
+      timer.running = true;
+      timer.paused = false;
+      timer.prepaid = true;
+      timer.prepaidCharged = minsNeeded;
+      if (endAlert.acked || !endAlert.id) {
+        endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
+        persistEndAlert();
+      }
+      persistTimer();
+      maybeRequestNotification();
+      showTimerRunUi();
+      go("timer");
+      startTickInterval();
+      syncFromWallClock();
+      render();
+      return;
+    }
     if (state.balance < minsNeeded && state.balance < 1) return;
     timer.purpose = selectedPurpose;
     timer.sessionId = `${Date.now()}-sec-${Math.random().toString(16).slice(2)}`;
@@ -1859,6 +2194,8 @@
     timer.endAt = Date.now() + timer.remainingMs;
     timer.running = true;
     timer.paused = false;
+    timer.prepaid = false;
+    timer.prepaidCharged = 0;
     if (endAlert.acked || !endAlert.id) {
       endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
       persistEndAlert();
