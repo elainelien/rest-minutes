@@ -56,7 +56,8 @@ body {
 
 .app {
   width: min(430px, 100%);
-  min-height: min(880px, calc(100dvh - 32px));
+  height: min(880px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
   background: linear-gradient(180deg, rgba(27, 46, 82, 0.72), rgba(13, 24, 48, 0.92) 30%, rgba(12, 21, 38, 0.97));
   border: 1px solid rgba(217, 179, 106, 0.4);
   border-radius: 32px;
@@ -111,7 +112,14 @@ body {
 .stat.hero-stat.is-debt .stat-value,
 .stat.hero-stat.is-debt .stat-unit { color: var(--danger); }
 
-.screens { flex: 1; overflow: auto; padding: 6px 20px 104px; scrollbar-width: thin; }
+.screens {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 20px 18px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
 .screen { display: none; animation: rise 0.32s ease; }
 .screen.active { display: block; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -306,12 +314,16 @@ h3 { font-family: var(--display); }
 .setting-toggle small { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
 .setting-toggle input { width: 23px; height: 23px; margin-top: 2px; accent-color: var(--gold); flex-shrink: 0; }
 
-/* tab bar */
+/* tab bar — pinned in the app chrome so long ledgers never scroll it away */
 .tabbar {
-  position: absolute; left: 12px; right: 12px; bottom: 12px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
+  margin: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
-  background: rgba(10, 18, 36, 0.94); border: 1px solid var(--line-soft); border-radius: 22px;
-  padding: 7px; backdrop-filter: blur(10px); box-shadow: 0 14px 30px rgba(2, 6, 18, 0.5);
+  background: rgba(10, 18, 36, 0.96); border: 1px solid var(--line-soft); border-radius: 22px;
+  padding: 7px; backdrop-filter: blur(12px);
+  box-shadow: 0 -8px 28px rgba(2, 6, 18, 0.45), 0 14px 30px rgba(2, 6, 18, 0.5);
 }
 .tab {
   border: none; background: transparent; border-radius: 16px; padding: 6px 2px 7px;
@@ -400,7 +412,13 @@ h3 { font-family: var(--display); }
 @media (max-width: 420px) {
   body { padding: 0; }
   .bg-moon { display: none; }
-  .app { width: 100%; min-height: 100dvh; border-radius: 0; border: none; }
+  .app {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
   .hero-minutes span { font-size: 3.2rem; }
   .countdown { font-size: 3.4rem; }
   .end-alert { padding: 18px 14px; }
