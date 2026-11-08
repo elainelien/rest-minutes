@@ -293,8 +293,32 @@ h3 { font-family: var(--display); }
 .prepaid-history li strong {
   font-family: var(--display); color: var(--danger); white-space: nowrap;
 }
+.prepaid-history li strong.is-refund {
+  color: var(--gold-bright);
+}
 .prepaid-empty { margin: 0 0 6px !important; }
+.prepaid-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+.prepaid-actions .btn.block { margin-top: 0; }
+#fundingSeg .seg-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .timer-debt-hint { color: var(--danger) !important; }
+.prepaid-run-tag {
+  margin: 0 0 2px;
+  color: var(--danger);
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 0.92rem;
+}
+.timer-setup.is-prepaid-mode {
+  border-color: rgba(255, 176, 163, 0.35);
+}
 .stats-debt { color: var(--danger); }
 .confirm-actions {
   display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; align-items: stretch;
