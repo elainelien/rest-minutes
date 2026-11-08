@@ -93,6 +93,23 @@ body {
 .mini-seal.gold { background: var(--gold); color: var(--night-850); border: none; }
 .balance-num { font-family: var(--display); font-size: 1.35rem; font-weight: 900; line-height: 1; }
 .balance-unit { font-size: 0.8rem; font-weight: 700; }
+.balance-chip.is-debt {
+  background: rgba(198, 83, 74, 0.18);
+  border-color: rgba(255, 176, 163, 0.65);
+  color: var(--danger);
+}
+.balance-chip.is-debt .chip-seal {
+  background: var(--danger-bg);
+  color: var(--cream);
+}
+.hero-minutes.is-debt span { color: var(--danger); }
+.hero-minutes.is-debt small { color: rgba(255, 176, 163, 0.85); }
+.stat.hero-stat.is-debt {
+  border-color: rgba(255, 176, 163, 0.45);
+  background: rgba(198, 83, 74, 0.14);
+}
+.stat.hero-stat.is-debt .stat-value,
+.stat.hero-stat.is-debt .stat-unit { color: var(--danger); }
 
 .screens { flex: 1; overflow: auto; padding: 6px 20px 104px; scrollbar-width: thin; }
 .screen { display: none; animation: rise 0.32s ease; }
@@ -236,6 +253,14 @@ h3 { font-family: var(--display); }
 .stat-value { font-family: var(--display); font-size: 1.45rem; font-weight: 900; color: var(--cream); }
 .hero-stat .stat-value { color: var(--gold-bright); font-size: 1.7rem; }
 .stat-unit { font-size: 0.8rem; color: var(--gold-bright); margin-left: 2px; font-weight: 700; }
+.deduct-teaser { margin-top: 12px; }
+.deduct-panel { margin-bottom: 14px; }
+.deduct-form { margin: 0; }
+.deduct-form .btn.block { margin-top: 2px; }
+.confirm-actions {
+  display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; align-items: stretch;
+}
+.confirm-actions .btn { margin-top: 0; width: 100%; }
 .list-title { margin: 18px 0 10px; font-size: 1rem; font-weight: 900; color: var(--cream); }
 .ledger { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .ledger li {

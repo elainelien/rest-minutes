@@ -18,11 +18,14 @@
     todayOvertime: 0,
     todayBonus: 0,
     todayRedeemed: 0,
+    todayManualDeducted: 0,
     allowOvertimeEarn: true,
     endSoundOn: true,
     ledger: [],
     dayHistory: {},
   });
+
+  let pendingDeduct = null;
 
   let state = load();
   let selectedSubject = "國文";
@@ -69,6 +72,7 @@
         merged.dayHistory = {};
       }
       if (!Number.isFinite(merged.todayRedeemed)) merged.todayRedeemed = 0;
+      if (!Number.isFinite(merged.todayManualDeducted)) merged.todayManualDeducted = 0;
       if (typeof merged.endSoundOn !== "boolean") merged.endSoundOn = true;
       migrateLedger(merged);
       rebuildDayHistoryFromLedger(merged);
@@ -122,6 +126,7 @@
       overtime: 0,
       bonus: 0,
       redeemed: 0,
+      manualDeducted: 0,
     };
   }
 
@@ -138,6 +143,7 @@
     bucket.overtime = Number(bucket.overtime) || 0;
     bucket.bonus = Number(bucket.bonus) || 0;
     bucket.redeemed = Number(bucket.redeemed) || 0;
+    bucket.manualDeducted = Number(bucket.manualDeducted) || 0;
     return bucket;
   }
 
@@ -210,6 +216,8 @@
         bucket.bonus += Number(item.bonus) || 0;
       } else if (item.kind === "redeem") {
         bucket.redeemed += Number(item.minutes) || Math.abs(Number(item.delta) || 0);
+      } else if (item.kind === "manual_deduct") {
+        bucket.manualDeducted += Number(item.minutes) || Math.abs(Number(item.delta) || 0);
       }
     });
 
@@ -234,6 +242,10 @@
       bucket.overtime = Math.max(Number(prev?.overtime) || 0, Number(led?.overtime) || 0);
       bucket.bonus = Math.max(Number(prev?.bonus) || 0, Number(led?.bonus) || 0);
       bucket.redeemed = Math.max(Number(prev?.redeemed) || 0, Number(led?.redeemed) || 0);
+      bucket.manualDeducted = Math.max(
+        Number(prev?.manualDeducted) || 0,
+        Number(led?.manualDeducted) || 0
+      );
       merged[day] = bucket;
     });
 
@@ -244,6 +256,7 @@
     merged[today].overtime = Number(target.todayOvertime) || 0;
     merged[today].bonus = Number(target.todayBonus) || 0;
     merged[today].redeemed = Number(target.todayRedeemed) || 0;
+    merged[today].manualDeducted = Number(target.todayManualDeducted) || 0;
 
     target.dayHistory = merged;
     pruneDayHistory(target);
@@ -255,6 +268,7 @@
     bucket.overtime = state.todayOvertime || 0;
     bucket.bonus = state.todayBonus || 0;
     bucket.redeemed = state.todayRedeemed || 0;
+    bucket.manualDeducted = state.todayManualDeducted || 0;
   }
 
   function rollDayIfNeeded() {
@@ -270,13 +284,26 @@
     state.todayOvertime = 0;
     state.todayBonus = 0;
     state.todayRedeemed = 0;
+    state.todayManualDeducted = 0;
     ensureDayBucket(state, key);
     pruneDayHistory(state);
-    // balance carries over
+    // balance carries over (including negative 預支 debt)
     save();
     if (selectedStatsDay !== key && !state.dayHistory[selectedStatsDay]) {
       selectedStatsDay = key;
     }
+  }
+
+  function debtMinutes() {
+    return state.balance < 0 ? Math.abs(state.balance) : 0;
+  }
+
+  function formatBalanceCopy() {
+    const debt = debtMinutes();
+    if (debt > 0) {
+      return { value: debt, label: "尚欠", unit: "分", isDebt: true };
+    }
+    return { value: state.balance, label: "剩餘可用", unit: "分", isDebt: false };
   }
 
   function scoreToPoints(score) {
@@ -584,7 +611,7 @@
     }
   }
 
-  function go(screen) {
+  function go(screen, options = {}) {
     document.querySelectorAll(".screen").forEach((el) => {
       el.classList.toggle("active", el.dataset.screen === screen);
     });
@@ -594,12 +621,23 @@
     if (screen === "timer") {
       const input = document.getElementById("timerMinutes");
       if (!timer.running && !timer.paused) {
-        input.value = Math.max(1, state.balance || 1);
-        input.max = Math.max(1, state.balance);
+        const avail = Math.max(0, state.balance);
+        input.value = Math.max(1, avail || 1);
+        input.max = Math.max(1, avail || 1);
       }
       syncFromWallClock();
     }
     render();
+    if (screen === "wallet" && options.focusDeduct) {
+      const panel = document.getElementById("deductPanel");
+      const minutesInput = document.getElementById("deductMinutes");
+      if (panel) {
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      if (minutesInput) {
+        setTimeout(() => minutesInput.focus(), 180);
+      }
+    }
   }
 
   function todayEarnedTotal() {
@@ -618,7 +656,9 @@
     const homeOt = document.getElementById("overtimeLine");
     const walletOt = document.getElementById("walletOvertimeLine");
     if (showOt) {
-      const text = `含超時已賺 ${todayEarnedTotal()} 分（一般 ${state.todayRegular}＋超時 ${ot}＋加碼 ${state.todayBonus}）· 剩餘可用 ${state.balance} 分`;
+      const bal = formatBalanceCopy();
+      const balText = bal.isDebt ? `尚欠 ${bal.value} 分` : `剩餘可用 ${bal.value} 分`;
+      const text = `含超時已賺 ${todayEarnedTotal()} 分（一般 ${state.todayRegular}＋超時 ${ot}＋加碼 ${state.todayBonus}）· ${balText}`;
       homeOt.hidden = false;
       walletOt.hidden = false;
       homeOt.textContent = text;
@@ -648,6 +688,7 @@
         overtime: state.todayOvertime || 0,
         bonus: state.todayBonus || 0,
         redeemed: state.todayRedeemed || 0,
+        manualDeducted: state.todayManualDeducted || 0,
       };
     }
     return {
@@ -656,6 +697,7 @@
       overtime: Number(bucket.overtime) || 0,
       bonus: Number(bucket.bonus) || 0,
       redeemed: Number(bucket.redeemed) || 0,
+      manualDeducted: Number(bucket.manualDeducted) || 0,
     };
   }
 
@@ -699,28 +741,54 @@
     }).join("");
 
     const earned = stats.regular + stats.overtime + stats.bonus;
+    const manual = stats.manualDeducted || 0;
     restEl.innerHTML =
       `<p>已賺休息 <strong>${earned}</strong> 分` +
       `（一般 ${stats.regular}＋超時 ${stats.overtime}＋加碼 ${stats.bonus}）</p>` +
-      `<p>已兌換休息 <strong>${stats.redeemed}</strong> 分</p>`;
+      `<p>已兌換休息 <strong>${stats.redeemed}</strong> 分</p>` +
+      (manual > 0
+        ? `<p>手動扣除／預支 <strong>${manual}</strong> 分</p>`
+        : "");
   }
 
   function render() {
     rollDayIfNeeded();
-    document.getElementById("balanceMinutes").textContent = state.balance;
-    document.getElementById("homeBalance").textContent = state.balance;
-    document.getElementById("walletBalance").textContent = state.balance;
+    const bal = formatBalanceCopy();
+    const chip = document.getElementById("balanceChip");
+    document.getElementById("balanceMinutes").textContent = bal.value;
+    document.getElementById("balanceUnit").textContent = "分";
+    if (chip) {
+      chip.classList.toggle("is-debt", bal.isDebt);
+      chip.title = bal.isDebt ? `尚欠 ${bal.value} 分` : "剩餘可休息";
+      const seal = chip.querySelector(".chip-seal");
+      if (seal) seal.textContent = bal.isDebt ? "欠" : "休";
+    }
+
+    const homeWrap = document.getElementById("homeBalanceWrap");
+    document.getElementById("homeBalance").textContent = bal.value;
+    document.getElementById("homeBalanceLabel").textContent = bal.isDebt ? "尚欠" : "分鐘可用";
+    if (homeWrap) homeWrap.classList.toggle("is-debt", bal.isDebt);
+
+    const walletStat = document.getElementById("walletBalanceStat");
+    document.getElementById("walletBalance").textContent = bal.value;
+    document.getElementById("walletBalanceLabel").textContent = bal.isDebt ? "尚欠" : "剩餘可用";
+    document.getElementById("walletBalanceUnit").textContent = "分";
+    if (walletStat) walletStat.classList.toggle("is-debt", bal.isDebt);
+
     document.getElementById("walletTodayRegular").textContent = state.todayRegular;
     document.getElementById("walletTodayBonus").textContent = state.todayBonus;
-    document.getElementById("timerAvail").textContent = state.balance;
+    document.getElementById("timerAvail").textContent = Math.max(0, state.balance);
     updateCapCopy();
     renderStats();
 
     const hint = document.getElementById("homeHint");
-    hint.textContent =
-      state.balance > 0
-        ? "可以按「開始休息」，用計時表倒數使用"
-        : "記康軒成績，讓月下狐火更亮";
+    if (bal.isDebt) {
+      hint.textContent = `尚欠 ${bal.value} 分；記成績賺到的分鐘會先還債`;
+    } else if (state.balance > 0) {
+      hint.textContent = "可以按「開始休息」，用計時表倒數使用";
+    } else {
+      hint.textContent = "記康軒成績，讓月下狐火更亮";
+    }
 
     const caps = document.getElementById("subjectCaps");
     caps.innerHTML = SUBJECTS.map((s) => {
@@ -793,6 +861,82 @@
     }, 3200);
   }
 
+  function hideDeductConfirm() {
+    const el = document.getElementById("deductConfirm");
+    if (el) el.hidden = true;
+    pendingDeduct = null;
+  }
+
+  function showDeductConfirm(minutes, note) {
+    pendingDeduct = { minutes, note };
+    const after = state.balance - minutes;
+    const body = document.getElementById("deductConfirmBody");
+    const meta = document.getElementById("deductConfirmMeta");
+    const dialog = document.getElementById("deductConfirm");
+    if (!body || !meta || !dialog) return;
+
+    const noteText = note ? `備註「${note}」` : "無備註";
+    body.textContent = `將扣除 ${minutes} 分（${noteText}）。`;
+    if (after < 0) {
+      meta.textContent = `目前 ${state.balance} 分 → 尚欠 ${Math.abs(after)} 分（預支）`;
+    } else {
+      meta.textContent = `目前 ${state.balance} 分 → 剩餘 ${after} 分`;
+    }
+    dialog.hidden = false;
+  }
+
+  function requestManualDeduct(event) {
+    event.preventDefault();
+    rollDayIfNeeded();
+    const minutes = Number(document.getElementById("deductMinutes").value);
+    const note = document.getElementById("deductNote").value.trim();
+    if (!Number.isFinite(minutes) || !Number.isInteger(minutes) || minutes < 1) {
+      showToast("deductToast", "請輸入至少 1 的整數分鐘", true);
+      return;
+    }
+    if (minutes > 24 * 60) {
+      showToast("deductToast", "一次最多扣除 1440 分", true);
+      return;
+    }
+    showDeductConfirm(minutes, note);
+  }
+
+  function applyManualDeduct() {
+    if (!pendingDeduct) return;
+    const { minutes, note } = pendingDeduct;
+    rollDayIfNeeded();
+
+    state.balance -= minutes;
+    state.todayManualDeducted = (state.todayManualDeducted || 0) + minutes;
+    const bucket = ensureDayBucket(state, state.day);
+    bucket.manualDeducted = state.todayManualDeducted;
+
+    const noteLabel = note || "預支";
+    addLedger({
+      kind: "manual_deduct",
+      minutes,
+      note: noteLabel,
+      title: "手動扣除／預支",
+      detail: note ? `${note} · 扣 ${minutes} 分` : `扣 ${minutes} 分`,
+      delta: -minutes,
+    });
+    pruneDayHistory(state);
+    save();
+    selectedStatsDay = state.day;
+
+    document.getElementById("deductMinutes").value = "";
+    document.getElementById("deductNote").value = "";
+    hideDeductConfirm();
+    render();
+
+    const bal = formatBalanceCopy();
+    if (bal.isDebt) {
+      showToast("deductToast", `已扣除 ${minutes} 分 · 尚欠 ${bal.value} 分`, true);
+    } else {
+      showToast("deductToast", `已扣除 ${minutes} 分 · 剩餘 ${bal.value} 分`);
+    }
+  }
+
   function submitScore(event) {
     event.preventDefault();
     rollDayIfNeeded();
@@ -846,12 +990,16 @@
     if (award.total === 0) {
       showToast("logToast", "已記錄，但這次是 0 分休息（未達 85 或已達上限）", true);
     } else if (award.softOvertime) {
+      const bal = formatBalanceCopy();
+      const balText = bal.isDebt ? `尚欠 ${bal.value} 分` : `目前剩餘 ${bal.value} 分`;
       showToast(
         "logToast",
-        `已入帳 +${award.total} 分鐘（含超時 ${award.overtimeGranted}）！目前剩餘 ${state.balance} 分`
+        `已入帳 +${award.total} 分鐘（含超時 ${award.overtimeGranted}）！${balText}`
       );
     } else {
-      showToast("logToast", `已入帳 +${award.total} 分鐘！目前剩餘 ${state.balance} 分`);
+      const bal = formatBalanceCopy();
+      const balText = bal.isDebt ? `尚欠 ${bal.value} 分` : `目前剩餘 ${bal.value} 分`;
+      showToast("logToast", `已入帳 +${award.total} 分鐘！${balText}`);
     }
   }
 
@@ -997,8 +1145,15 @@
 
   // Events
   document.querySelectorAll("[data-go]").forEach((btn) => {
-    btn.addEventListener("click", () => go(btn.dataset.go));
+    btn.addEventListener("click", () => {
+      go(btn.dataset.go, { focusDeduct: btn.dataset.focusDeduct === "1" });
+    });
   });
+
+  document.getElementById("deductForm").addEventListener("submit", requestManualDeduct);
+  document.getElementById("deductConfirmOk").addEventListener("click", applyManualDeduct);
+  document.getElementById("deductConfirmCancel").addEventListener("click", hideDeductConfirm);
+  document.getElementById("deductConfirmBackdrop").addEventListener("click", hideDeductConfirm);
 
   document.querySelectorAll(".seg-btn[data-subject]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1042,7 +1197,13 @@
   document.getElementById("endAlertAck").addEventListener("click", acknowledgeEndAlert);
   document.getElementById("endAlertBackdrop").addEventListener("click", acknowledgeEndAlert);
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && endAlert.id && !endAlert.acked) {
+    if (event.key !== "Escape") return;
+    const deductDialog = document.getElementById("deductConfirm");
+    if (deductDialog && !deductDialog.hidden) {
+      hideDeductConfirm();
+      return;
+    }
+    if (endAlert.id && !endAlert.acked) {
       acknowledgeEndAlert();
     }
   });
