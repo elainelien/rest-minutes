@@ -2,8 +2,13 @@
   const STORAGE_KEY = "xuxu-rest-v1";
   const TIMER_KEY = "xuxu-rest-timer-v1";
   const END_ALERT_KEY = "xuxu-rest-end-alert-v1";
+  const BG_SCHEDULE_KEY = "xuxu-rest-bg-schedule-v1";
   const BACKUP_APP_ID = "xuxu-rest-minutes";
   const BACKUP_VERSION = 1;
+  const SW_PATH = "./sw.js";
+  const NOTIFY_TITLE = "休息時間到";
+  const NOTIFY_BODY = "煦煦的休息時間結束了";
+  const NOTIFY_TAG_PREFIX = "xuxu-rest-end-";
   const SUBJECTS = ["國文", "數學", "英文"];
   const POINT_MINUTES = 5;
   const SUBJECT_CAP = 20;
@@ -24,6 +29,7 @@
     todayManualDeducted: 0,
     allowOvertimeEarn: true,
     endSoundOn: true,
+    bgEndNotifyOn: true,
     ledger: [],
     dayHistory: {},
   });
@@ -61,6 +67,10 @@
     charge: 0,
     purpose: "",
   };
+  let swRegistration = null;
+  let swRegisterAttempted = false;
+  let swRegisterFailed = false;
+  const notifiedSessionIds = new Set();
 
   function todayKey() {
     const d = new Date();
@@ -85,6 +95,7 @@
       if (!Number.isFinite(merged.todayRedeemed)) merged.todayRedeemed = 0;
       if (!Number.isFinite(merged.todayManualDeducted)) merged.todayManualDeducted = 0;
       if (typeof merged.endSoundOn !== "boolean") merged.endSoundOn = true;
+      if (typeof merged.bgEndNotifyOn !== "boolean") merged.bgEndNotifyOn = true;
       migrateLedger(merged);
       rebuildDayHistoryFromLedger(merged);
       return merged;
@@ -726,24 +737,257 @@
     }
   }
 
-  function maybeRequestNotification() {
-    if (typeof Notification === "undefined") return;
-    if (Notification.permission === "default") {
-      Notification.requestPermission().catch(() => {});
+  function supportsNotificationApi() {
+    return typeof Notification !== "undefined";
+  }
+
+  function notificationPermissionLabel() {
+    if (!supportsNotificationApi()) return "不支援";
+    const perm = Notification.permission;
+    if (perm === "granted") return "已允許";
+    if (perm === "denied") return "被拒";
+    return "尚未設定";
+  }
+
+  function updateBgNotifyStatusUi() {
+    const statusEl = document.getElementById("bgNotifyStatus");
+    const hintEl = document.getElementById("bgNotifyHint");
+    const toggle = document.getElementById("bgEndNotifyToggle");
+    if (toggle) toggle.checked = state.bgEndNotifyOn !== false;
+
+    const permLabel = notificationPermissionLabel();
+    const optedIn = state.bgEndNotifyOn !== false;
+    let statusText = `通知權限：${permLabel}`;
+    if (!supportsNotificationApi()) {
+      statusText = "通知權限：此瀏覽器不支援系統通知";
+    } else if (!optedIn) {
+      statusText = `通知權限：${permLabel}（已關閉背景通知）`;
+    } else if (permLabel === "被拒") {
+      statusText = "通知權限：被拒 — 請到系統／瀏覽器設定重新允許";
+    } else if (permLabel === "尚未設定") {
+      statusText = "通知權限：尚未設定 — 開此開關或按「開始倒數」時會詢問";
+    } else if (swRegisterFailed) {
+      statusText = `通知權限：${permLabel} · Service Worker 無法註冊，改用頁面通知（背景分頁仍可能收到）`;
+    } else if (swRegistration) {
+      statusText = `通知權限：${permLabel} · 已啟用背景結束提醒`;
+    }
+
+    if (statusEl) statusEl.textContent = statusText;
+    if (hintEl) {
+      hintEl.textContent =
+        "在其他 App 時用系統通知提醒「休息時間到」。" +
+        `權限狀態：${permLabel}。` +
+        "iPhone／iPad 請先「加入主畫面」成 PWA 較可能收到（需較新 iOS）；" +
+        "這不是遠端 push，瀏覽器殺掉背景頁面時可能收不到。";
     }
   }
 
-  function notifyRestEnded() {
-    if (typeof Notification === "undefined") return;
-    if (Notification.permission !== "granted") return;
-    try {
-      new Notification("休息時間到", {
-        body: "煦煦休息時間已結束，回來看看錢包吧。",
-        lang: "zh-Hant",
-      });
-    } catch {
-      // ignore notification failures
+  function postToServiceWorker(message) {
+    return new Promise((resolve) => {
+      const worker =
+        swRegistration && (swRegistration.active || swRegistration.waiting || swRegistration.installing);
+      if (!worker) {
+        resolve({ ok: false, reason: "no-worker" });
+        return;
+      }
+      try {
+        const channel = new MessageChannel();
+        const timer = setTimeout(() => resolve({ ok: false, reason: "timeout" }), 1500);
+        channel.port1.onmessage = (event) => {
+          clearTimeout(timer);
+          resolve(event.data || { ok: true });
+        };
+        worker.postMessage(message, [channel.port2]);
+      } catch {
+        resolve({ ok: false, reason: "post-failed" });
+      }
+    });
+  }
+
+  async function ensureServiceWorker() {
+    if (swRegistration) return swRegistration;
+    if (swRegisterAttempted) return null;
+    swRegisterAttempted = true;
+    if (!("serviceWorker" in navigator)) {
+      swRegisterFailed = true;
+      return null;
     }
+    try {
+      swRegistration = await navigator.serviceWorker.register(SW_PATH, { scope: "./" });
+      swRegisterFailed = false;
+      return swRegistration;
+    } catch (err) {
+      swRegisterFailed = true;
+      swRegistration = null;
+      console.warn("Service worker registration failed; page Notification fallback only.", err);
+      return null;
+    }
+  }
+
+  /** Only call from a user gesture (Start Rest / settings toggle). */
+  async function requestBgNotifyPermissionFromGesture() {
+    if (state.bgEndNotifyOn === false) {
+      updateBgNotifyStatusUi();
+      return supportsNotificationApi() ? Notification.permission : "denied";
+    }
+    await ensureServiceWorker();
+    if (!supportsNotificationApi()) {
+      updateBgNotifyStatusUi();
+      return "denied";
+    }
+    if (Notification.permission === "default") {
+      try {
+        await Notification.requestPermission();
+      } catch {
+        // ignore
+      }
+    }
+    updateBgNotifyStatusUi();
+    return Notification.permission;
+  }
+
+  function clearPersistedBgSchedule() {
+    try {
+      localStorage.removeItem(BG_SCHEDULE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  function persistBgSchedule(payload) {
+    try {
+      if (!payload) {
+        clearPersistedBgSchedule();
+        return;
+      }
+      localStorage.setItem(BG_SCHEDULE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore
+    }
+  }
+
+  function readPersistedBgSchedule() {
+    try {
+      const raw = localStorage.getItem(BG_SCHEDULE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.sessionId || !parsed?.endAt) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function buildBgSchedulePayload() {
+    if (!timer.sessionId || timer.endAt == null) return null;
+    return {
+      endAt: Number(timer.endAt),
+      sessionId: String(timer.sessionId),
+      purpose: timer.purpose || "",
+      title: NOTIFY_TITLE,
+      body: NOTIFY_BODY,
+    };
+  }
+
+  async function cancelBgEndSchedule(sessionId) {
+    clearPersistedBgSchedule();
+    await postToServiceWorker({
+      type: "cancel",
+      sessionId: sessionId || undefined,
+    });
+  }
+
+  async function scheduleBgEndAlert() {
+    if (state.bgEndNotifyOn === false) {
+      await cancelBgEndSchedule(timer.sessionId);
+      return;
+    }
+    if (!timer.running || timer.endAt == null || !timer.sessionId) {
+      await cancelBgEndSchedule();
+      return;
+    }
+    const payload = buildBgSchedulePayload();
+    if (!payload) return;
+    persistBgSchedule(payload);
+    await ensureServiceWorker();
+    await postToServiceWorker({ type: "schedule", ...payload });
+  }
+
+  function markSessionNotified(sessionId) {
+    if (!sessionId) return;
+    notifiedSessionIds.add(String(sessionId));
+  }
+
+  function wasSessionNotified(sessionId) {
+    if (!sessionId) return false;
+    return notifiedSessionIds.has(String(sessionId));
+  }
+
+  async function showSystemEndNotification(sessionId, { force = false } = {}) {
+    if (state.bgEndNotifyOn === false) return false;
+    if (!supportsNotificationApi() || Notification.permission !== "granted") return false;
+    if (!force && !document.hidden) return false;
+
+    const id = String(sessionId || endAlert.id || "");
+    if (!id) return false;
+    if (wasSessionNotified(id) || (endAlert.id === id && endAlert.notified)) return false;
+    // Claim immediately so concurrent finish + UI paths cannot spam.
+    markSessionNotified(id);
+    if (endAlert.id === id) endAlert.notified = true;
+
+    const tag = `${NOTIFY_TAG_PREFIX}${id}`;
+    const options = {
+      body: NOTIFY_BODY,
+      lang: "zh-Hant",
+      tag,
+      renotify: false,
+      vibrate: [180, 80, 180, 80, 260],
+      data: { sessionId: id, url: "./" },
+    };
+
+    let shown = false;
+    await ensureServiceWorker();
+    if (swRegistration && typeof swRegistration.showNotification === "function") {
+      try {
+        await swRegistration.showNotification(NOTIFY_TITLE, options);
+        shown = true;
+      } catch {
+        shown = false;
+      }
+    }
+
+    if (!shown) {
+      try {
+        const n = new Notification(NOTIFY_TITLE, options);
+        if (typeof n.addEventListener === "function") {
+          n.addEventListener("click", () => {
+            try {
+              window.focus();
+            } catch {
+              // ignore
+            }
+            try {
+              n.close();
+            } catch {
+              // ignore
+            }
+          });
+        }
+        shown = true;
+      } catch {
+        shown = false;
+      }
+    }
+
+    if (shown) {
+      // Best-effort vibrate when the page can still run (hidden tab on Android).
+      vibrateTimeUp();
+    }
+    return shown;
+  }
+
+  async function notifyRestEndedIfNeeded(sessionId) {
+    return showSystemEndNotification(sessionId || endAlert.id, { force: false });
   }
 
   function clearPersistedEndAlert() {
@@ -858,8 +1102,15 @@
     if (playEffects && !endAlert.effectsPlayed) {
       const sounded = playTimeUpChime();
       const vibrated = vibrateTimeUp();
-      if (!endAlert.notified) {
-        notifyRestEnded();
+      // System notification only when backgrounded (and opted in); modal/sound stay in-app.
+      if (!endAlert.notified && document.hidden) {
+        notifyRestEndedIfNeeded(endAlert.id).then((shown) => {
+          if (shown) {
+            endAlert.notified = true;
+            persistEndAlert();
+          }
+        });
+      } else if (wasSessionNotified(endAlert.id)) {
         endAlert.notified = true;
       }
       // Retry later if still backgrounded / audio locked; stop once something worked
@@ -912,12 +1163,29 @@
       hideEndAlertUi();
       return;
     }
+    const ackedId = endAlert.id;
     endAlert.acked = true;
     endAlert.shown = true;
     endAlert.effectsPlayed = true;
     endAlert.notified = true;
+    markSessionNotified(ackedId);
     persistEndAlert();
     hideEndAlertUi();
+    // Dismiss any lingering system notification for this session.
+    if (swRegistration && typeof swRegistration.getNotifications === "function") {
+      swRegistration
+        .getNotifications({ tag: `${NOTIFY_TAG_PREFIX}${ackedId}` })
+        .then((list) => {
+          list.forEach((n) => {
+            try {
+              n.close();
+            } catch {
+              // ignore
+            }
+          });
+        })
+        .catch(() => {});
+    }
   }
 
   function hideEndAlertUi() {
@@ -949,6 +1217,8 @@
 
     // Reliable completion: wall-clock due on each tick AND after resume/focus.
     if (isTimerDue()) {
+      // Prefer notifying while still hidden before finish tears down the session.
+      if (document.hidden) maybeFireOverdueBgNotify();
       finishTimer(true);
     }
   }
@@ -957,10 +1227,31 @@
     if (audioCtx && audioCtx.state === "suspended") {
       audioCtx.resume().catch(() => {});
     }
+    // If timer ended while suspended/hidden, finish first, then show unacked modal.
     syncFromWallClock();
+    maybeFireOverdueBgNotify();
     // If time already ended (or alert pending), always re-show modal; retry sound/vibrate once.
     if (endAlert.id && !endAlert.acked) {
       showEndAlertUi({ playEffects: !endAlert.effectsPlayed });
+    }
+    updateBgNotifyStatusUi();
+  }
+
+  function maybeFireOverdueBgNotify() {
+    if (state.bgEndNotifyOn === false) return;
+    if (!document.hidden) return;
+    if (!supportsNotificationApi() || Notification.permission !== "granted") return;
+
+    // Live timer overdue while page still ticking in background.
+    if (timer.running && timer.endAt != null && Date.now() >= timer.endAt && timer.sessionId) {
+      showSystemEndNotification(timer.sessionId, { force: true });
+      return;
+    }
+
+    // Persisted schedule: page woke / still hidden after endAt.
+    const scheduled = readPersistedBgSchedule();
+    if (scheduled && Date.now() >= Number(scheduled.endAt)) {
+      showSystemEndNotification(scheduled.sessionId, { force: true });
     }
   }
 
@@ -1044,6 +1335,7 @@
     if (toggle) toggle.checked = overtimeOn;
     const soundToggle = document.getElementById("endSoundToggle");
     if (soundToggle) soundToggle.checked = state.endSoundOn !== false;
+    updateBgNotifyStatusUi();
   }
 
   function getStatsForDay(day) {
@@ -1530,7 +1822,7 @@
       persistEndAlert();
     }
     persistTimer();
-    maybeRequestNotification();
+    requestBgNotifyPermissionFromGesture().then(() => scheduleBgEndAlert());
     showTimerRunUi();
     startTickInterval();
     syncFromWallClock();
@@ -1623,18 +1915,21 @@
       timer.running = true;
       timer.paused = false;
       persistTimer();
+      scheduleBgEndAlert();
       document.getElementById("pauseTimerBtn").textContent = "暫停";
       startTickInterval();
       syncFromWallClock();
       return;
     }
     if (!timer.running) return;
+    const pausedSessionId = timer.sessionId;
     timer.remainingMs = getRemainingMs();
     timer.endAt = null;
     timer.running = false;
     timer.paused = true;
     clearTickInterval();
     persistTimer();
+    cancelBgEndSchedule(pausedSessionId);
     document.getElementById("pauseTimerBtn").textContent = "繼續";
     updateCountdownDisplay();
   }
@@ -1662,6 +1957,11 @@
       timer.prepaid = false;
       timer.prepaidCharged = 0;
       clearPersistedTimer();
+      cancelBgEndSchedule(sessionId);
+      // If completing while backgrounded, fire system notification before modal path.
+      if (completed && document.hidden) {
+        showSystemEndNotification(sessionId, { force: true });
+      }
 
       const usedMs = Math.max(0, startedWithMs - remainingMs);
       const usedMin = usedMs <= 0 ? 0 : Math.max(1, Math.ceil(usedMs / 60000));
@@ -1772,6 +2072,9 @@
     go("timer");
     if (timer.running) {
       startTickInterval();
+      scheduleBgEndAlert();
+    } else {
+      cancelBgEndSchedule(timer.sessionId);
     }
     syncFromWallClock();
     return true;
@@ -1836,6 +2139,19 @@
   document.getElementById("endSoundToggle").addEventListener("change", (event) => {
     state.endSoundOn = Boolean(event.target.checked);
     save();
+  });
+  document.getElementById("bgEndNotifyToggle").addEventListener("change", (event) => {
+    state.bgEndNotifyOn = Boolean(event.target.checked);
+    save();
+    if (state.bgEndNotifyOn) {
+      requestBgNotifyPermissionFromGesture().then(() => {
+        if (timer.running && timer.endAt != null) scheduleBgEndAlert();
+        updateBgNotifyStatusUi();
+      });
+    } else {
+      cancelBgEndSchedule(timer.sessionId);
+      updateBgNotifyStatusUi();
+    }
   });
   document.getElementById("statsDaySelect").addEventListener("change", (event) => {
     selectedStatsDay = event.target.value || todayKey();
@@ -1921,6 +2237,7 @@
         todayManualDeducted: state.todayManualDeducted,
         allowOvertimeEarn: state.allowOvertimeEarn !== false,
         endSoundOn: state.endSoundOn !== false,
+        bgEndNotifyOn: state.bgEndNotifyOn !== false,
         ledger: Array.isArray(state.ledger) ? state.ledger : [],
         dayHistory: state.dayHistory && typeof state.dayHistory === "object" ? state.dayHistory : {},
       },
@@ -2007,6 +2324,7 @@
       prepaidCharged: 0,
     };
     clearPersistedTimer();
+    cancelBgEndSchedule();
     endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
     clearPersistedEndAlert();
     hideEndAlertUi();
@@ -2018,6 +2336,7 @@
     if (!Number.isFinite(merged.todayRedeemed)) merged.todayRedeemed = 0;
     if (!Number.isFinite(merged.todayManualDeducted)) merged.todayManualDeducted = 0;
     if (typeof merged.endSoundOn !== "boolean") merged.endSoundOn = true;
+    if (typeof merged.bgEndNotifyOn !== "boolean") merged.bgEndNotifyOn = true;
     if (typeof merged.allowOvertimeEarn !== "boolean") merged.allowOvertimeEarn = true;
     migrateLedger(merged);
     rebuildDayHistoryFromLedger(merged);
@@ -2140,6 +2459,7 @@
       prepaidCharged: 0,
     };
     clearPersistedTimer();
+    cancelBgEndSchedule();
     endAlert = { id: null, shown: false, acked: false, effectsPlayed: false, notified: false, charge: 0, purpose: "" };
     persistEndAlert();
     hideEndAlertUi();
@@ -2147,9 +2467,11 @@
     hideDeductConfirm();
     const keepOvertime = state.allowOvertimeEarn !== false;
     const keepSound = state.endSoundOn !== false;
+    const keepBgNotify = state.bgEndNotifyOn !== false;
     state = defaultState();
     state.allowOvertimeEarn = keepOvertime;
     state.endSoundOn = keepSound;
+    state.bgEndNotifyOn = keepBgNotify;
     selectedStatsDay = todayKey();
     setSelectedSubject("國文", { syncPreview: false });
     selectedPurpose = "電視";
@@ -2220,7 +2542,7 @@
         persistEndAlert();
       }
       persistTimer();
-      maybeRequestNotification();
+      requestBgNotifyPermissionFromGesture().then(() => scheduleBgEndAlert());
       showTimerRunUi();
       go("timer");
       startTickInterval();
@@ -2243,12 +2565,29 @@
       persistEndAlert();
     }
     persistTimer();
-    maybeRequestNotification();
+    requestBgNotifyPermissionFromGesture().then(() => scheduleBgEndAlert());
     showTimerRunUi();
     go("timer");
     startTickInterval();
     syncFromWallClock();
   });
+
+  // Register SW early (no permission prompt). Permission only on Start / settings toggle.
+  ensureServiceWorker().finally(() => {
+    updateBgNotifyStatusUi();
+    if (timer.running && timer.endAt != null) scheduleBgEndAlert();
+  });
+
+  // If permission changes in another tab / system UI, refresh status copy.
+  if (supportsNotificationApi() && navigator.permissions && navigator.permissions.query) {
+    try {
+      navigator.permissions.query({ name: "notifications" }).then((status) => {
+        status.onchange = () => updateBgNotifyStatusUi();
+      }).catch(() => {});
+    } catch {
+      // ignore unsupported permission query
+    }
+  }
 
   rollDayIfNeeded();
   selectedStatsDay = todayKey();
@@ -2259,4 +2598,6 @@
   restoreTimerFromStorage();
   // Catch overdue timers immediately after restore (in case interval was delayed).
   syncFromWallClock();
+  maybeFireOverdueBgNotify();
+  updateBgNotifyStatusUi();
 })();

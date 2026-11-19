@@ -370,6 +370,7 @@ h3 { font-family: var(--display); }
 .setting-toggle strong { display: block; font-family: var(--display); color: var(--cream); margin-bottom: 4px; }
 .setting-toggle small { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
 .setting-toggle input { width: 23px; height: 23px; margin-top: 2px; accent-color: var(--gold); flex-shrink: 0; }
+#bgNotifyStatus { margin: -6px 0 14px; padding: 0 4px; }
 
 /* tab bar — pinned in the app chrome so long ledgers never scroll it away */
 .tabbar {

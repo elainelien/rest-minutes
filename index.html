@@ -234,6 +234,14 @@
           </span>
           <input type="checkbox" id="endSoundToggle" checked />
         </label>
+        <label class="setting-toggle">
+          <span>
+            <strong>背景結束通知</strong>
+            <small id="bgNotifyHint">在其他 App 時用系統通知提醒「休息時間到」。權限狀態：尚未設定。iOS 請先加入主畫面（PWA）較可能收到；瀏覽器背景／推播限制下無法保證，不是遠端 push。</small>
+          </span>
+          <input type="checkbox" id="bgEndNotifyToggle" checked />
+        </label>
+        <p class="hint tight" id="bgNotifyStatus" aria-live="polite">通知權限：尚未設定</p>
         <div class="panel backup-panel">
           <div class="panel-head"><h3>備份／還原</h3><span class="mini-seal">冊</span></div>
           <p class="hint tight">匯出本機點數、流水、每日紀錄、設定與進行中的計時；換手機或清除前建議先備份。</p>
